@@ -1,6 +1,6 @@
 # Project Files Review
-# Generated: 2025-05-19T09-38-02.653Z
-# Total files: 11
+# Generated: 2025-05-19T16-05-24.107Z
+# Total files: 16
 
 
 ================================================================================
@@ -199,6 +199,153 @@ File: public/index.html
 
 
 ================================================================================
+File: README.md
+================================================================================
+
+# WaveSurfer with Regions and VLC Player Integration
+
+## Overview
+
+This project integrates WaveSurfer.js audio visualization with VLC media player control. It provides:
+
+1. Audio waveform visualization with WaveSurfer.js
+2. Region selection and manipulation
+3. VLC media player control via a web interface
+4. Synchronization between WaveSurfer regions and VLC playback
+
+The application allows users to visualize audio files, create regions by dragging on the waveform, and control VLC media player directly from the web interface.
+
+## Features
+
+- **Audio Visualization**: Display waveform and spectrogram
+- **Region Management**: Create, edit, and remove regions on the waveform
+- **VLC Integration**: Launch and control VLC from the web interface
+- **Synchronization**: Click on a region to seek VLC to that position
+- **Responsive Design**: Works on desktop and mobile devices
+
+## Setup Instructions
+
+### Prerequisites
+
+- Node.js and npm installed
+- VLC media player installed on your system
+- React development environment
+
+### Installation
+
+1. Clone the repository:
+
+   ```bash
+   git clone <repository-url>
+   cd wavesurfer-vlc-integration
+   ```
+
+2. Install dependencies:
+
+   ```bash
+   npm install
+   ```
+
+3. Install required packages:
+   ```bash
+   npm install @wavesurfer/react wavesurfer.js express body-parser
+   ```
+
+### Setup Backend for VLC Control
+
+Create a server directory and add the backend files:
+
+1. **Create Express server**:
+
+   ```bash
+   mkdir -p server
+   cp src/backend-vlc-controller.js server/vlcController.js
+   ```
+
+2. **Create server.js file**:
+
+   ```javascript
+   const express = require('express');
+   const bodyParser = require('body-parser');
+   const vlcController = require('./vlcController');
+
+   const app = express();
+   const PORT = process.env.PORT || 3001;
+
+   app.use(bodyParser.json());
+   app.use('/api', vlcController);
+
+   app.listen(PORT, () => {
+     console.log(`Server running on port ${PORT}`);
+   });
+   ```
+
+3. **Update package.json** to include server:
+   ```json
+   "scripts": {
+     "start": "react-scripts start",
+     "build": "react-scripts build",
+     "server": "node server/server.js",
+     "dev": "concurrently \"npm run server\" \"npm run start\""
+   }
+   ```
+
+### Running the Application
+
+1. Start the development environment:
+
+   ```bash
+   npm run dev
+   ```
+
+2. Access the application at http://localhost:3000
+
+## Usage
+
+1. **Upload an audio file** using the upload panel
+2. **Visualize the audio** in the waveform and spectrogram
+3. **Create regions** by dragging on the waveform
+4. **Launch VLC** using the VLC button in the controls
+5. **Control playback** using both WaveSurfer and VLC controls
+6. **Click on regions** to seek VLC to that position
+
+## Components Structure
+
+- **App.js**: Main application component
+- **WaveSurferComponent.js**: Audio visualization and region management
+- **VLCController.js**: VLC media player control interface
+- **UploadPanel.js**: File upload interface
+- **StatusBar.js**: Application status display
+
+## VLC Integration
+
+The application communicates with VLC using its RC (Remote Control) interface. When you launch VLC from the web interface, it starts with the following parameters:
+
+```
+--extraintf rc --rc-host localhost:9999 --no-video-title-show
+```
+
+The backend server then communicates with VLC through this RC interface to control playback, seek to specific positions, adjust volume, etc.
+
+## Customization
+
+- Update the color scheme in CSS files
+- Adjust the WaveSurfer visualization parameters in WaveSurferComponent.js
+- Modify the VLC controller commands in VLCController.js
+- Change the layout in App.js
+
+## Credits
+
+- WaveSurfer.js: https://wavesurfer-js.org/
+- VLC Media Player: https://www.videolan.org/
+- React: https://reactjs.org/
+
+## License
+
+MIT License
+
+
+================================================================================
 File: scan_project.js
 ================================================================================
 
@@ -322,23 +469,234 @@ function main() {
 main();
 
 ================================================================================
-File: src/App.js
+File: server/vlcController.js
+================================================================================
+
+/**
+ * File: server/vlcController.js
+ * Description: Backend API for VLC controller
+ * 
+ * Version History:
+ * v1.0.0 (2025-05-19) - Initial implementation based on Dash-VLC controller
+ */
+
+const express = require('express');
+const { spawn } = require('child_process');
+const net = require('net');
+const fs = require('fs');
+const path = require('path');
+const os = require('os');
+const router = express.Router();
+
+// Global variables to store state
+let vlcProcess = null;
+let isPlaying = false;
+let currentMediaPath = null;
+
+// VLC RC interface details
+const VLC_HOST = 'localhost';
+const VLC_PORT = 9999;
+
+// Function to send command to VLC
+const sendVLCCommand = async (command) => {
+  return new Promise((resolve, reject) => {
+    try {
+      const client = new net.Socket();
+      
+      client.on('error', (err) => {
+        reject(`Connection error: ${err.message}`);
+      });
+      
+      client.connect(VLC_PORT, VLC_HOST, () => {
+        client.write(`${command}\n`);
+      });
+      
+      client.on('data', (data) => {
+        const response = data.toString().trim();
+        client.destroy();
+        resolve(response);
+      });
+      
+      // Set timeout to avoid hanging
+      setTimeout(() => {
+        client.destroy();
+        reject('Connection timeout');
+      }, 3000);
+      
+    } catch (error) {
+      reject(`Error sending command: ${error.message}`);
+    }
+  });
+};
+
+// API endpoint for launching VLC
+router.post('/launch-vlc', async (req, res) => {
+  try {
+    const { mediaPath } = req.body;
+    
+    // Validate media path
+    if (!mediaPath || !fs.existsSync(mediaPath)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Invalid media path or file not found' 
+      });
+    }
+    
+    // Kill any existing VLC process
+    if (vlcProcess !== null) {
+      try {
+        vlcProcess.kill();
+        // Wait for process to terminate
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      } catch (error) {
+        console.error(`Error terminating VLC process: ${error.message}`);
+      }
+    }
+    
+    // Determine VLC path based on OS
+    let vlcPath;
+    if (process.platform === 'win32') {  // Windows
+      const windowsPaths = [
+        'C:\\Program Files\\VideoLAN\\VLC\\vlc.exe',
+        'C:\\Program Files (x86)\\VideoLAN\\VLC\\vlc.exe'
+      ];
+      
+      for (const path of windowsPaths) {
+        if (fs.existsSync(path)) {
+          vlcPath = path;
+          break;
+        }
+      }
+      
+      if (!vlcPath) vlcPath = 'vlc';  // Try using PATH
+    } else if (process.platform === 'darwin') {  // macOS
+      if (fs.existsSync('/Applications/VLC.app/Contents/MacOS/VLC')) {
+        vlcPath = '/Applications/VLC.app/Contents/MacOS/VLC';
+      } else {
+        vlcPath = 'vlc';  // Try using PATH
+      }
+    } else {  // Linux
+      vlcPath = 'vlc';  // Try using PATH
+    }
+    
+    // Launch VLC with RC interface
+    vlcProcess = spawn(vlcPath, [
+      '--extraintf', 'rc',
+      '--rc-host', `${VLC_HOST}:${VLC_PORT}`,
+      '--no-video-title-show',  // No title overlay
+      mediaPath
+    ]);
+    
+    // Handle process events
+    vlcProcess.on('error', (error) => {
+      console.error(`VLC process error: ${error.message}`);
+      vlcProcess = null;
+    });
+    
+    vlcProcess.on('exit', (code) => {
+      console.log(`VLC process exited with code ${code}`);
+      vlcProcess = null;
+    });
+    
+    // Wait for VLC to initialize
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
+    // Immediately pause
+    await sendVLCCommand('pause');
+    isPlaying = false;
+    currentMediaPath = mediaPath;
+    
+    res.json({ 
+      success: true, 
+      message: 'VLC launched successfully' 
+    });
+    
+  } catch (error) {
+    console.error(`Error launching VLC: ${error.message}`);
+    res.status(500).json({ 
+      success: false, 
+      message: `Error launching VLC: ${error.message}` 
+    });
+  }
+});
+
+// API endpoint for sending commands to VLC
+router.post('/vlc-command', async (req, res) => {
+  try {
+    const { command } = req.body;
+    
+    if (!command) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'No command provided' 
+      });
+    }
+    
+    if (!vlcProcess) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'VLC is not running' 
+      });
+    }
+    
+    const response = await sendVLCCommand(command);
+    
+    // Update state based on command
+    if (command === 'pause') {
+      isPlaying = !isPlaying;
+    }
+    
+    res.json({ 
+      success: true, 
+      response,
+      playerState: {
+        isPlaying,
+        currentMediaPath
+      }
+    });
+    
+  } catch (error) {
+    console.error(`Error sending command to VLC: ${error.message}`);
+    res.status(500).json({ 
+      success: false, 
+      message: `Error sending command: ${error.message}` 
+    });
+  }
+});
+
+// API endpoint for checking VLC status
+router.get('/vlc-status', (req, res) => {
+  res.json({
+    isRunning: vlcProcess !== null,
+    isPlaying,
+    currentMediaPath
+  });
+});
+
+module.exports = router;
+
+================================================================================
+File: src/app.js
 ================================================================================
 
 /**
  * File: src/App.js
- * Description: Main application component
+ * Description: Main application component with integrated controls
  * 
  * Version History:
  * v1.0.0 (2025-05-18) - Initial implementation based on original HTML
  * v1.0.1 (2025-05-19) - Updated to use @wavesurfer/react
+ * v1.0.2 (2025-05-19) - Removed loop regions checkbox, set loopRegions to true
+ * v1.0.3 (2025-05-19) - Integrated VLC controller with all controls in one row
  */
 
 import React, { useState, useRef, useEffect } from 'react';
 import WaveSurferComponent from './components/WaveSurferComponent';
+import VLCController from './components/VLCController';
 import StatusBar from './components/StatusBar';
 import UploadPanel from './components/UploadPanel';
 import './assets/styles/main.css';
+import './assets/styles/integrated-controls.css';
 
 function App() {
   // State
@@ -348,10 +706,12 @@ function App() {
   const [isReady, setIsReady] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(100);
   const [playbackSpeed, setPlaybackSpeed] = useState(1.0);
-  const [loopRegions, setLoopRegions] = useState(true);
-  const [dragSelection, setDragSelection] = useState(true);
+  // Set loopRegions to true - regions will always loop
+  const loopRegions = true;
   const [status, setStatus] = useState({ text: "No audio loaded", type: "info" });
   const [alert, setAlert] = useState({ message: "", isOpen: false, type: "info" });
+  const [activeRegion, setActiveRegion] = useState(null);
+  const [filePath, setFilePath] = useState(null);
   
   // Refs
   const wavesurferRef = useRef(null);
@@ -366,6 +726,14 @@ function App() {
     setIsReady(false);
     setStatus({ text: "Loading...", type: "warning" });
     setAlert({ message: `File uploaded: ${file.name}`, isOpen: true, type: "success" });
+    
+    // Create a path for VLC to use (in a real implementation, this would be a server-side path)
+    if (file instanceof File) {
+      const url = URL.createObjectURL(file);
+      setFilePath(url);
+    } else {
+      setFilePath(file);
+    }
   };
   
   // Handler for play/pause
@@ -407,13 +775,61 @@ function App() {
   
   // Handler for clear regions
   const handleClearRegions = () => {
-    if (wavesurferRef.current) {
-      const regionsPlugin = wavesurferRef.current.getActivePlugins().find(plugin => plugin.name === 'regions');
-      if (regionsPlugin) {
-        regionsPlugin.clearRegions();
-        setAlert({ message: "All regions cleared", isOpen: true, type: "warning" });
-      }
+    if (!wavesurferRef.current) {
+      console.error("WaveSurfer instance not available");
+      setAlert({ message: "Cannot clear regions: Player not initialized", isOpen: true, type: "danger" });
+      return;
     }
+    
+    try {
+      console.log("Attempting to clear regions...");
+      
+      // Try direct access to regions plugin
+      if (wavesurferRef.current.regions) {
+        console.log("Found regions plugin:", wavesurferRef.current.regions);
+        wavesurferRef.current.regions.clearRegions();
+        setAlert({ message: "All regions cleared", isOpen: true, type: "success" });
+        // Reset active region
+        setActiveRegion(null);
+      } else {
+        // Try to find the regions plugin in active plugins
+        const regionsPlugin = wavesurferRef.current.getActivePlugins().find(
+          plugin => plugin.name === 'regions' || plugin.params?.name === 'regions'
+        );
+        
+        if (regionsPlugin) {
+          console.log("Found regions plugin:", regionsPlugin);
+          regionsPlugin.clearRegions();
+          setAlert({ message: "All regions cleared", isOpen: true, type: "success" });
+          // Reset active region
+          setActiveRegion(null);
+        } else {
+          console.error("Regions plugin not found");
+          setAlert({ message: "Could not clear regions", isOpen: true, type: "danger" });
+        }
+      }
+    } catch (error) {
+      console.error("Error clearing regions:", error);
+      setAlert({ message: "Error clearing regions", isOpen: true, type: "danger" });
+    }
+  };
+  
+  // Handler for region activation
+  const handleRegionActivated = (region) => {
+    setActiveRegion(region);
+  };
+  
+  // Handler for VLC status changes
+  const handleVLCStatusChange = (vlcStatus) => {
+    // Synchronize WaveSurfer playback with VLC if needed
+    if (vlcStatus.isPlaying !== isPlaying) {
+      setIsPlaying(vlcStatus.isPlaying);
+    }
+  };
+  
+  // Handler for VLC errors
+  const handleVLCError = (error) => {
+    setAlert({ message: error, isOpen: true, type: "danger" });
   };
   
   // Close alert after 3 seconds
@@ -429,7 +845,7 @@ function App() {
   
   return (
     <div className="container">
-      <h1>WaveSurfer with Regions</h1>
+      <h1>WaveSurfer with Regions and VLC</h1>
       
       <StatusBar status={status.text} type={status.type} />
       
@@ -439,84 +855,78 @@ function App() {
         audioFile={audioFile}
         isPlaying={isPlaying}
         loopRegions={loopRegions}
-        dragSelection={dragSelection}
         zoomLevel={zoomLevel}
         playbackSpeed={playbackSpeed}
         onPlayPause={handlePlayPause}
         onReady={handleReady}
+        onRegionActivated={handleRegionActivated}
       />
       
-      {/* Controls Row - Matching the original HTML structure */}
-      <div className="controls-row">
-        {/* Zoom control slider */}
-        <div className="slider-container">
-          <span className="slider-label">Zoom:</span>
-          <input
-            type="range"
-            id="zoom-slider"
-            min="10"
-            max="1000"
-            value={zoomLevel}
-            onChange={(e) => setZoomLevel(Number(e.target.value))}
-          />
-          <span id="zoom-value" className="slider-value">{zoomLevel}</span>
-        </div>
+      <div className="all-controls">
+        {/* First row: sliders for zoom and speed */}
+        <div className="controls-row">
+          {/* Zoom control slider */}
+          <div className="slider-container">
+            <span className="slider-label">Zoom:</span>
+            <input
+              type="range"
+              id="zoom-slider"
+              min="10"
+              max="1000"
+              value={zoomLevel}
+              onChange={(e) => setZoomLevel(Number(e.target.value))}
+            />
+            <span id="zoom-value" className="slider-value">{zoomLevel}</span>
+          </div>
 
-        {/* Playback speed control slider */}
-        <div className="slider-container">
-          <span className="slider-label">Speed:</span>
-          <input
-            type="range"
-            id="speed-slider"
-            min="0.5"
-            max="3"
-            step="0.1"
-            value={playbackSpeed}
-            onChange={(e) => setPlaybackSpeed(Number(e.target.value))}
-          />
-          <span id="speed-value" className="slider-value">{playbackSpeed.toFixed(1)}x</span>
-        </div>
-
-        {/* Region looping control */}
-        <div className="checkbox-container">
-          <input 
-            type="checkbox" 
-            id="loop-regions" 
-            checked={loopRegions}
-            onChange={(e) => setLoopRegions(e.target.checked)}
-          />
-          <label htmlFor="loop-regions">Loop regions</label>
+          {/* Playback speed control slider */}
+          <div className="slider-container">
+            <span className="slider-label">Speed:</span>
+            <input
+              type="range"
+              id="speed-slider"
+              min="0.5"
+              max="3"
+              step="0.1"
+              value={playbackSpeed}
+              onChange={(e) => setPlaybackSpeed(Number(e.target.value))}
+            />
+            <span id="speed-value" className="slider-value">{playbackSpeed.toFixed(1)}x</span>
+          </div>
         </div>
         
-        {/* Drag selection control */}
-        <div className="checkbox-container">
-          <input 
-            type="checkbox" 
-            id="drag-selection" 
-            checked={dragSelection}
-            onChange={(e) => setDragSelection(e.target.checked)}
-          />
-          <label htmlFor="drag-selection">Enable drag</label>
+        {/* Second row: combined WaveSurfer and VLC controls */}
+        <div className="main-controls">
+          {/* WaveSurfer control buttons */}
+          <div className="player-buttons">
+            <button id="play-pause" onClick={() => handlePlayPause()}>
+              {isPlaying ? 'Pause' : 'Play'}
+            </button>
+            <button id="zoom-in" onClick={handleZoomIn} disabled={!isReady}>
+              Zoom In
+            </button>
+            <button id="zoom-out" onClick={handleZoomOut} disabled={!isReady}>
+              Zoom Out
+            </button>
+            <button id="reset-zoom" onClick={handleResetZoom} disabled={!isReady}>
+              Reset Zoom
+            </button>
+            <button id="clear-regions" className="danger" onClick={handleClearRegions} disabled={!isReady}>
+              Clear Regions
+            </button>
+          </div>
+          
+          {/* VLC controls section */}
+          <div className="vlc-section">
+            <VLCController
+              mediaFile={filePath}
+              wavesurferInstance={wavesurferRef.current}
+              activeRegion={activeRegion}
+              onStatusChange={handleVLCStatusChange}
+              onError={handleVLCError}
+            />
+          </div>
         </div>
-      </div>
-      
-      {/* Player control buttons - Directly from original HTML */}
-      <div className="controls">
-        <button id="play-pause" onClick={() => handlePlayPause()}>
-          {isPlaying ? 'Pause' : 'Play'}
-        </button>
-        <button id="zoom-in" onClick={handleZoomIn} disabled={!isReady}>
-          Zoom In
-        </button>
-        <button id="zoom-out" onClick={handleZoomOut} disabled={!isReady}>
-          Zoom Out
-        </button>
-        <button id="reset-zoom" onClick={handleResetZoom} disabled={!isReady}>
-          Reset Zoom
-        </button>
-        <button id="clear-regions" className="danger" onClick={handleClearRegions} disabled={!isReady}>
-          Clear Regions
-        </button>
       </div>
       
       {alert.isOpen && (
@@ -531,6 +941,292 @@ function App() {
 export default App;
 
 ================================================================================
+File: src/assets/styles/integrated-controls.css
+================================================================================
+
+/**
+ * File: src/assets/styles/integrated-controls.css
+ * Description: CSS for the integrated controls row
+ * 
+ * Version History:
+ * v1.0.0 (2025-05-19) - Initial implementation
+ */
+
+.all-controls {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 1000px;
+  margin: 20px auto;
+}
+
+/* Combined controls row with all controls in one line */
+.controls-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 15px;
+  background-color: #1d1919;
+  border-radius: 25px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  margin-bottom: 15px;
+}
+
+.slider-container {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 200px;
+  margin: 0 10px;
+}
+
+.slider-label {
+  margin-right: 5px;
+  min-width: 45px;
+  white-space: nowrap;
+  color: #adb5bd;
+}
+
+.slider-value {
+  min-width: 35px;
+  text-align: right;
+  color: #0dcaf0;
+}
+
+input[type='range'] {
+  flex-grow: 1;
+  margin: 0 5px;
+  height: 8px;
+  border-radius: 4px;
+  background: #555555;
+  outline: none;
+}
+
+input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #4363ca;
+  cursor: pointer;
+}
+
+input[type='range']::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #4363ca;
+  cursor: pointer;
+}
+
+/* Main controls container */
+.main-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  width: 100%;
+  background-color: #1d1919;
+  border-radius: 25px;
+  padding: 15px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+/* Player buttons */
+.player-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  margin-right: 20px;
+}
+
+.player-buttons button {
+  background-color: #4363ca;
+  color: #ffffff;
+  padding: 8px 15px;
+  border: none;
+  border-radius: 5px;
+  margin: 0 5px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.player-buttons button:hover {
+  background-color: #357ea8;
+}
+
+.player-buttons button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.player-buttons button.danger {
+  background-color: #dc3545;
+}
+
+.player-buttons button.danger:hover {
+  background-color: #c82333;
+}
+
+/* VLC controls */
+.vlc-section {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  margin-left: 20px;
+  border-left: 1px solid #333;
+  padding-left: 20px;
+}
+
+/* VLC button styles */
+.vlc-controls button {
+  background-color: transparent;
+  color: #f8f9fa;
+  border: none;
+  padding: 8px 12px;
+  margin: 0 5px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.vlc-controls button:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #0dcaf0;
+}
+
+.vlc-controls button i {
+  font-size: 1.2rem;
+}
+
+.vlc-launch {
+  background-color: #dc3545 !important;
+  color: #ffffff !important;
+  padding: 8px 15px;
+  border: none;
+  border-radius: 5px;
+  margin-right: 15px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.vlc-launch:hover {
+  background-color: #c82333 !important;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.vlc-launch:disabled {
+  background-color: #6c757d !important;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.vlc-status {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+}
+
+.status-label {
+  color: #6c757d;
+  margin-right: 8px;
+}
+
+.status-value {
+  font-weight: bold;
+}
+
+.status-value.playing {
+  color: #28a745;
+}
+
+.status-value.paused {
+  color: #ffc107;
+}
+
+/* Alert message */
+.alert {
+  padding: 12px 16px;
+  margin-top: 15px;
+  border-radius: 8px;
+  text-align: center;
+  animation: fadeIn 0.3s ease-in;
+}
+
+.alert-info {
+  background-color: rgba(13, 202, 240, 0.15);
+  color: #0dcaf0;
+}
+
+.alert-success {
+  background-color: rgba(40, 167, 69, 0.15);
+  color: #28a745;
+}
+
+.alert-warning {
+  background-color: rgba(255, 193, 7, 0.15);
+  color: #ffc107;
+}
+
+.alert-danger {
+  background-color: rgba(220, 53, 69, 0.15);
+  color: #dc3545;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .main-controls {
+    flex-direction: column;
+  }
+
+  .player-buttons,
+  .vlc-section {
+    width: 100%;
+    margin: 10px 0;
+    padding: 0;
+    border-left: none;
+  }
+
+  .vlc-section {
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid #333;
+  }
+
+  .slider-container {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .slider-label {
+    margin-bottom: 5px;
+  }
+
+  .controls-row {
+    flex-direction: column;
+  }
+
+  .vlc-controls {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+}
+
+
+================================================================================
 File: src/assets/styles/main.css
 ================================================================================
 
@@ -541,6 +1237,7 @@ File: src/assets/styles/main.css
  * Version History:
  * v1.0.0 (2025-05-18) - Initial implementation based on original HTML
  * v1.0.1 (2025-05-19) - Fixed corrupted CSS rule for waveform container
+ * v1.0.2 (2025-05-19) - Updated container widths to 95% and fixed background colors
  */
 
 body {
@@ -552,7 +1249,7 @@ body {
 }
 
 .container {
-  max-width: 1000px;
+  max-width: 1200px; /* Slightly wider container */
   margin: 0 auto;
 }
 
@@ -575,8 +1272,8 @@ h1 {
 
 /* Single container for waveform, spectrogram and timeline */
 #waveform-container {
-  width: 100%;
-  margin-bottom: 20px;
+  width: 95% !important; /* Force 95% width */
+  margin: 0 auto 20px auto !important; /* Center the container */
   background-color: #1a1a1a;
   border-radius: 5px;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
@@ -589,8 +1286,9 @@ h1 {
 
 /* Only keep minimap separate */
 #minimap {
+  width: 95% !important; /* Force 95% width */
   height: 40px;
-  margin-bottom: 20px;
+  margin: 0 auto 20px auto !important; /* Center the minimap */
   background-color: #1a1a1a;
   border-radius: 5px;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
@@ -602,8 +1300,8 @@ h1 {
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  width: 100%;
-  max-width: 1000px;
+  width: 95%; /* Match waveform width */
+  max-width: 1200px;
   margin: 20px auto;
   padding: 15px;
   background-color: #1d1919;
@@ -671,6 +1369,8 @@ input[type='range']::-moz-range-thumb {
   justify-content: center;
   margin: 20px 0;
   flex-wrap: wrap;
+  width: 95%; /* Match waveform width */
+  margin: 20px auto;
 }
 
 button {
@@ -747,6 +1447,8 @@ button:disabled {
   margin: 10px 0;
   background-color: #222;
   border-radius: 5px;
+  width: 95%; /* Match waveform width */
+  margin: 10px auto;
 }
 
 .text-info {
@@ -776,6 +1478,8 @@ button:disabled {
   border-radius: 8px;
   text-align: center;
   animation: fadeIn 0.3s ease-in;
+  width: 95%; /* Match waveform width */
+  margin: 15px auto;
 }
 
 .alert-info {
@@ -820,6 +1524,16 @@ button:disabled {
 
 .me-2 {
   margin-right: 0.5rem !important;
+}
+
+/* Current time display */
+.current-time {
+  text-align: center;
+  margin-bottom: 10px;
+  width: 95%; /* Match waveform width */
+  margin: 0 auto 10px auto;
+  color: #0dcaf0;
+  font-weight: bold;
 }
 
 /* Responsive adjustments */
@@ -1012,6 +1726,198 @@ v1.0.0 (2025-05-18) - Initial implementation */
   .upload-area {
     max-width: 100%;
     padding: 20px 10px;
+  }
+}
+
+
+================================================================================
+File: src/assets/styles/vlc-controller.css
+================================================================================
+
+/**
+ * File: src/assets/styles/vlc-controller.css
+ * Description: Styles for VLC controller
+ * 
+ * Version History:
+ * v1.0.0 (2025-05-19) - Initial implementation
+ */
+
+.vlc-controls {
+  display: flex;
+  align-items: center;
+  margin-top: 1rem;
+  background-color: #1d1919;
+  border-radius: 25px;
+  padding: 12px 20px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+.vlc-launch {
+  background-color: #dc3545;
+  color: #ffffff;
+  padding: 8px 15px;
+  border: none;
+  border-radius: 5px;
+  margin-right: 20px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.vlc-launch:hover {
+  background-color: #c82333;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.vlc-launch:disabled {
+  background-color: #6c757d;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.vlc-launch i {
+  margin-right: 5px;
+}
+
+.vlc-playback-controls {
+  display: flex;
+  align-items: center;
+  flex: 1;
+}
+
+.vlc-playback-controls.disabled {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.vlc-playback-controls button {
+  background-color: transparent;
+  color: #f8f9fa;
+  border: none;
+  padding: 8px 12px;
+  margin: 0 5px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.vlc-playback-controls button:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #0dcaf0;
+}
+
+.vlc-playback-controls button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.vlc-playback-controls button i {
+  font-size: 1.2rem;
+}
+
+.vlc-status {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+}
+
+.status-label {
+  color: #6c757d;
+  margin-right: 8px;
+}
+
+.status-value {
+  font-weight: bold;
+}
+
+.status-value.not {
+  color: #6c757d;
+}
+
+.status-value.ready {
+  color: #0dcaf0;
+}
+
+.status-value.playing {
+  color: #28a745;
+}
+
+.status-value.paused,
+.status-value.stopped {
+  color: #ffc107;
+}
+
+.status-value.error {
+  color: #dc3545;
+}
+
+.vlc-alert {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  padding: 12px 20px;
+  border-radius: 5px;
+  animation: slideIn 0.3s ease-out;
+  z-index: 1000;
+  max-width: 300px;
+}
+
+.alert-info {
+  background-color: rgba(13, 202, 240, 0.2);
+  border-left: 4px solid #0dcaf0;
+  color: #0dcaf0;
+}
+
+.alert-success {
+  background-color: rgba(40, 167, 69, 0.2);
+  border-left: 4px solid #28a745;
+  color: #28a745;
+}
+
+.alert-warning {
+  background-color: rgba(255, 193, 7, 0.2);
+  border-left: 4px solid #ffc107;
+  color: #ffc107;
+}
+
+.alert-danger {
+  background-color: rgba(220, 53, 69, 0.2);
+  border-left: 4px solid #dc3545;
+  color: #dc3545;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* Make the VLC controls responsive */
+@media (max-width: 768px) {
+  .vlc-controls {
+    flex-direction: column;
+    padding: 15px;
+  }
+
+  .vlc-launch {
+    margin-bottom: 15px;
+    margin-right: 0;
+    width: 100%;
+  }
+
+  .vlc-playback-controls {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .vlc-status {
+    margin: 15px auto 0;
   }
 }
 
@@ -1216,6 +2122,788 @@ const UploadPanel = ({ onFileUpload }) => {
 export default UploadPanel;
 
 ================================================================================
+File: src/components/VLCController.js
+================================================================================
+
+/**
+ * File: src/components/VLCController.js
+ * Description: VLC Media Player controller component
+ * 
+ * Version History:
+ * v1.0.0 (2025-05-19) - Initial implementation based on Dash-VLC controller
+ * v1.0.1 (2025-05-19) - Optimized for integration in main controls row
+ */
+
+import React, { useState, useEffect, useCallback } from 'react';
+
+const VLCController = ({ 
+  mediaFile, 
+  onStatusChange,
+  wavesurferInstance,
+  activeRegion,
+  onError
+}) => {
+  // State for the VLC controller
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [status, setStatus] = useState('Not connected');
+  const [vlcConnected, setVlcConnected] = useState(false);
+  
+  // VLC connection settings
+  const VLC_HOST = 'localhost';
+  const VLC_PORT = 9999;
+
+  // Function to send commands to VLC via backend API
+  const sendVLCCommand = useCallback(async (command) => {
+    try {
+      // In a real implementation, you would make an API call to your backend
+      // For demonstration, we'll use a mock implementation
+      console.log(`Sending VLC command: ${command}`);
+      
+      // Simulate a backend call
+      const response = await fetch('/api/vlc-command', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ command })
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to send command: ${response.statusText}`);
+      }
+      
+      const result = await response.json();
+      return result.response;
+    } catch (error) {
+      console.error(`Error sending command: ${error.message}`);
+      if (onError) onError(`Error: ${error.message}`);
+      return null;
+    }
+  }, [onError]);
+
+  // Function to launch VLC
+  const launchVLC = useCallback(async () => {
+    if (!mediaFile) {
+      if (onError) onError('Please upload a media file first');
+      return;
+    }
+
+    try {
+      // Make API call to backend to launch VLC
+      const response = await fetch('/api/launch-vlc', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mediaPath: mediaFile })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to launch VLC: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      
+      if (result.success) {
+        setVlcConnected(true);
+        setStatus('Ready');
+        
+        // Pause immediately after launch
+        await sendVLCCommand('pause');
+        setIsPlaying(false);
+      } else {
+        throw new Error(result.message);
+      }
+    } catch (error) {
+      console.error(`Error launching VLC: ${error.message}`);
+      if (onError) onError(`Error launching VLC: ${error.message}`);
+      setStatus('Error');
+    }
+  }, [mediaFile, sendVLCCommand, onError]);
+
+  // Play/Pause toggle
+  const togglePlayPause = useCallback(async () => {
+    if (!vlcConnected) return;
+    
+    try {
+      await sendVLCCommand('pause');
+      const newPlayingState = !isPlaying;
+      setIsPlaying(newPlayingState);
+      setStatus(newPlayingState ? 'Playing' : 'Paused');
+      
+      // Notify parent component
+      if (onStatusChange) {
+        onStatusChange({ isPlaying: newPlayingState });
+      }
+    } catch (error) {
+      console.error(`Error toggling play/pause: ${error.message}`);
+    }
+  }, [vlcConnected, isPlaying, sendVLCCommand, onStatusChange]);
+
+  // Stop playback
+  const stopPlayback = useCallback(async () => {
+    if (!vlcConnected) return;
+    
+    try {
+      // First pause then seek to beginning
+      await sendVLCCommand('pause');
+      await sendVLCCommand('seek 0');
+      setIsPlaying(false);
+      setStatus('Stopped');
+      
+      // Notify parent component
+      if (onStatusChange) {
+        onStatusChange({ isPlaying: false });
+      }
+    } catch (error) {
+      console.error(`Error stopping playback: ${error.message}`);
+    }
+  }, [vlcConnected, sendVLCCommand, onStatusChange]);
+
+  // Seek backward/forward
+  const seekMedia = useCallback(async (seconds) => {
+    if (!vlcConnected) return;
+    
+    try {
+      const command = `seek ${seconds > 0 ? '+' : ''}${seconds}`;
+      await sendVLCCommand(command);
+    } catch (error) {
+      console.error(`Error seeking media: ${error.message}`);
+    }
+  }, [vlcConnected, sendVLCCommand]);
+
+  // Volume up/down
+  const adjustVolume = useCallback(async (amount) => {
+    if (!vlcConnected) return;
+    
+    try {
+      const command = amount > 0 ? 'volup 5' : 'voldown 5';
+      await sendVLCCommand(command);
+    } catch (error) {
+      console.error(`Error adjusting volume: ${error.message}`);
+    }
+  }, [vlcConnected, sendVLCCommand]);
+
+  // Toggle fullscreen
+  const toggleFullscreen = useCallback(async () => {
+    if (!vlcConnected) return;
+    
+    try {
+      await sendVLCCommand('fullscreen');
+    } catch (error) {
+      console.error(`Error toggling fullscreen: ${error.message}`);
+    }
+  }, [vlcConnected, sendVLCCommand]);
+
+  // Effect to handle active region changes
+  useEffect(() => {
+    if (!vlcConnected || !activeRegion || !wavesurferInstance) return;
+    
+    const handleRegionPlayback = async () => {
+      try {
+        // Seek to the region start time
+        const startTime = activeRegion.start;
+        await sendVLCCommand(`seek ${Math.floor(startTime)}`);
+        
+        // Resume playback if paused
+        if (!isPlaying) {
+          await sendVLCCommand('pause'); // VLC uses the same command to toggle play/pause
+          setIsPlaying(true);
+          setStatus('Playing region');
+          
+          // Notify parent component
+          if (onStatusChange) {
+            onStatusChange({ isPlaying: true });
+          }
+        }
+      } catch (error) {
+        console.error(`Error handling region playback: ${error.message}`);
+      }
+    };
+    
+    handleRegionPlayback();
+  }, [activeRegion, vlcConnected, sendVLCCommand, wavesurferInstance, isPlaying, onStatusChange]);
+
+  // Render compact VLC controller buttons
+  return (
+    <div className="vlc-controls">
+      {/* Launch VLC Button */}
+      <button 
+        className="vlc-launch"
+        onClick={launchVLC}
+        disabled={!mediaFile || vlcConnected}
+        title="Launch VLC Player"
+      >
+        <i className="fas fa-external-link-alt"></i> VLC
+      </button>
+      
+      {/* Only show playback controls if VLC is connected */}
+      {vlcConnected && (
+        <>
+          <button
+            onClick={togglePlayPause}
+            title={isPlaying ? 'Pause' : 'Play'}
+          >
+            <i className={`fas ${isPlaying ? 'fa-pause' : 'fa-play'}`}></i>
+          </button>
+          
+          <button
+            onClick={stopPlayback}
+            title="Stop"
+          >
+            <i className="fas fa-stop"></i>
+          </button>
+          
+          <button
+            onClick={() => adjustVolume(-5)}
+            title="Volume Down"
+          >
+            <i className="fas fa-volume-down"></i>
+          </button>
+          
+          <button
+            onClick={() => adjustVolume(5)}
+            title="Volume Up"
+          >
+            <i className="fas fa-volume-up"></i>
+          </button>
+          
+          <button
+            onClick={() => seekMedia(-10)}
+            title="Seek Backward 10s"
+          >
+            <i className="fas fa-backward"></i>
+          </button>
+          
+          <button
+            onClick={() => seekMedia(10)}
+            title="Seek Forward 10s"
+          >
+            <i className="fas fa-forward"></i>
+          </button>
+          
+          <button
+            onClick={toggleFullscreen}
+            title="Toggle Fullscreen"
+          >
+            <i className="fas fa-expand"></i>
+          </button>
+        </>
+      )}
+      
+      {/* Status indicator */}
+      <div className="vlc-status">
+        <span className="status-label">VLC:</span>
+        <span className={`status-value ${status.toLowerCase()}`}>{status}</span>
+      </div>
+    </div>
+  );
+};
+
+export default VLCController;
+File) {
+      if (onError) onError('Please upload a media file first');
+      return;
+    }
+
+    try {
+      // Make API call to backend to launch VLC
+      const response = await fetch('/api/launch-vlc', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mediaPath: mediaFile })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to launch VLC: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      
+      if (result.success) {
+        setVlcConnected(true);
+        setStatus('Ready');
+        
+        // Pause immediately after launch
+        await sendVLCCommand('pause');
+        setIsPlaying(false);
+      } else {
+        throw new Error(result.message);
+      }
+    } catch (error) {
+      console.error(`Error launching VLC: ${error.message}`);
+      if (onError) onError(`Error launching VLC: ${error.message}`);
+      setStatus('Error');
+    }
+  }, [mediaFile, sendVLCCommand, onError]);
+
+  // Play/Pause toggle
+  const togglePlayPause = useCallback(async () => {
+    if (!vlcConnected) return;
+    
+    try {
+      await sendVLCCommand('pause');
+      const newPlayingState = !isPlaying;
+      setIsPlaying(newPlayingState);
+      setStatus(newPlayingState ? 'Playing' : 'Paused');
+      
+      // Notify parent component
+      if (onStatusChange) {
+        onStatusChange({ isPlaying: newPlayingState });
+      }
+    } catch (error) {
+      console.error(`Error toggling play/pause: ${error.message}`);
+    }
+  }, [vlcConnected, isPlaying, sendVLCCommand, onStatusChange]);
+
+  // Stop playback
+  const stopPlayback = useCallback(async () => {
+    if (!vlcConnected) return;
+    
+    try {
+      // First pause then seek to beginning
+      await sendVLCCommand('pause');
+      await sendVLCCommand('seek 0');
+      setIsPlaying(false);
+      setStatus('Stopped');
+      
+      // Notify parent component
+      if (onStatusChange) {
+        onStatusChange({ isPlaying: false });
+      }
+    } catch (error) {
+      console.error(`Error stopping playback: ${error.message}`);
+    }
+  }, [vlcConnected, sendVLCCommand, onStatusChange]);
+
+  // Seek backward/forward
+  const seekMedia = useCallback(async (seconds) => {
+    if (!vlcConnected) return;
+    
+    try {
+      const command = `seek ${seconds > 0 ? '+' : ''}${seconds}`;
+      await sendVLCCommand(command);
+    } catch (error) {
+      console.error(`Error seeking media: ${error.message}`);
+    }
+  }, [vlcConnected, sendVLCCommand]);
+
+  // Volume up/down
+  const adjustVolume = useCallback(async (amount) => {
+    if (!vlcConnected) return;
+    
+    try {
+      const command = amount > 0 ? 'volup 5' : 'voldown 5';
+      await sendVLCCommand(command);
+    } catch (error) {
+      console.error(`Error adjusting volume: ${error.message}`);
+    }
+  }, [vlcConnected, sendVLCCommand]);
+
+  // Toggle fullscreen
+  const toggleFullscreen = useCallback(async () => {
+    if (!vlcConnected) return;
+    
+    try {
+      await sendVLCCommand('fullscreen');
+    } catch (error) {
+      console.error(`Error toggling fullscreen: ${error.message}`);
+    }
+  }, [vlcConnected, sendVLCCommand]);
+
+  // Effect to handle active region changes
+  useEffect(() => {
+    if (!vlcConnected || !activeRegion || !wavesurferInstance) return;
+    
+    const handleRegionPlayback = async () => {
+      try {
+        // Seek to the region start time
+        const startTime = activeRegion.start;
+        await sendVLCCommand(`seek ${Math.floor(startTime)}`);
+        
+        // Resume playback if paused
+        if (!isPlaying) {
+          await sendVLCCommand('pause'); // VLC uses the same command to toggle play/pause
+          setIsPlaying(true);
+          setStatus('Playing region');
+          
+          // Notify parent component
+          if (onStatusChange) {
+            onStatusChange({ isPlaying: true });
+          }
+        }
+      } catch (error) {
+        console.error(`Error handling region playback: ${error.message}`);
+      }
+    };
+    
+    handleRegionPlayback();
+  }, [activeRegion, vlcConnected, sendVLCCommand, wavesurferInstance, isPlaying, onStatusChange]);
+
+  // Render compact VLC controller buttons
+  return (
+    <div className="vlc-controls">
+      {/* Launch VLC Button */}
+      <button 
+        className="vlc-launch"
+        onClick={launchVLC}
+        disabled={!mediaFile || vlcConnected}
+        title="Launch VLC Player"
+      >
+        <i className="fas fa-external-link-alt"></i> VLC
+      </button>
+      
+      {/* Only show playback controls if VLC is connected */}
+      {vlcConnected && (
+        <>
+          <button
+            onClick={togglePlayPause}
+            title={isPlaying ? 'Pause' : 'Play'}
+          >
+            <i className={`fas ${isPlaying ? 'fa-pause' : 'fa-play'}`}></i>
+          </button>
+          
+          <button
+            onClick={stopPlayback}
+            title="Stop"
+          >
+            <i className="fas fa-stop"></i>
+          </button>
+          
+          <button
+            onClick={() => adjustVolume(-5)}
+            title="Volume Down"
+          >
+            <i className="fas fa-volume-down"></i>
+          </button>
+          
+          <button
+            onClick={() => adjustVolume(5)}
+            title="Volume Up"
+          >
+            <i className="fas fa-volume-up"></i>
+          </button>
+          
+          <button
+            onClick={() => seekMedia(-10)}
+            title="Seek Backward 10s"
+          >
+            <i className="fas fa-backward"></i>
+          </button>
+          
+          <button
+            onClick={() => seekMedia(10)}
+            title="Seek Forward 10s"
+          >
+            <i className="fas fa-forward"></i>
+          </button>
+          
+          <button
+            onClick={toggleFullscreen}
+            title="Toggle Fullscreen"
+          >
+            <i className="fas fa-expand"></i>
+          </button>
+        </>
+      )}
+      
+      {/* Status indicator */}
+      <div className="vlc-status">
+        <span className="status-label">VLC:</span>
+        <span className={`status-value ${status.toLowerCase()}`}>{status}</span>
+      </div>
+    </div>
+  );
+};
+
+export default VLCController;
+File, 
+  onStatusChange,
+  wavesurferInstance,
+  activeRegion,
+  onError
+}) => {
+  // State for the VLC controller
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [status, setStatus] = useState('Not connected');
+  const [vlcConnected, setVlcConnected] = useState(false);
+  const [alertMessage, setAlertMessage] = useState(null);
+  const [alertType, setAlertType] = useState('info');
+
+  // VLC connection settings
+  const VLC_HOST = 'localhost';
+  const VLC_PORT = 9999;
+
+  // Function to send commands to VLC via backend API
+  const sendVLCCommand = useCallback(async (command) => {
+    try {
+      // In a real implementation, you would make an API call to your backend
+      // For demonstration, we'll use a mock implementation
+      console.log(`Sending VLC command: ${command}`);
+      
+      // Simulate a backend call
+      const response = await fetch('/api/vlc-command', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ command })
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to send command: ${response.statusText}`);
+      }
+      
+      const result = await response.json();
+      return result.response;
+    } catch (error) {
+      console.error(`Error sending command: ${error.message}`);
+      showAlert(`Error: ${error.message}`, 'danger');
+      return null;
+    }
+  }, []);
+
+  // Function to launch VLC
+  const launchVLC = useCallback(async () => {
+    if (!mediaFile) {
+      showAlert('Please upload a media file first', 'danger');
+      return;
+    }
+
+    try {
+      // Make API call to backend to launch VLC
+      const response = await fetch('/api/launch-vlc', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mediaPath: mediaFile })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to launch VLC: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      
+      if (result.success) {
+        setVlcConnected(true);
+        setStatus('Ready');
+        showAlert('VLC launched successfully', 'success');
+        
+        // Pause immediately after launch
+        await sendVLCCommand('pause');
+        setIsPlaying(false);
+      } else {
+        throw new Error(result.message);
+      }
+    } catch (error) {
+      console.error(`Error launching VLC: ${error.message}`);
+      showAlert(`Error launching VLC: ${error.message}`, 'danger');
+      setStatus('Error');
+    }
+  }, [mediaFile, sendVLCCommand]);
+
+  // Helper to show alert messages
+  const showAlert = (message, type = 'info') => {
+    setAlertMessage(message);
+    setAlertType(type);
+    
+    // Auto-hide after 3 seconds
+    setTimeout(() => {
+      setAlertMessage(null);
+    }, 3000);
+  };
+
+  // Play/Pause toggle
+  const togglePlayPause = useCallback(async () => {
+    if (!vlcConnected) return;
+    
+    try {
+      await sendVLCCommand('pause');
+      const newPlayingState = !isPlaying;
+      setIsPlaying(newPlayingState);
+      setStatus(newPlayingState ? 'Playing' : 'Paused');
+      showAlert(newPlayingState ? 'Media playing' : 'Media paused');
+      
+      // Notify parent component
+      if (onStatusChange) {
+        onStatusChange({ isPlaying: newPlayingState });
+      }
+    } catch (error) {
+      console.error(`Error toggling play/pause: ${error.message}`);
+    }
+  }, [vlcConnected, isPlaying, sendVLCCommand, onStatusChange]);
+
+  // Stop playback
+  const stopPlayback = useCallback(async () => {
+    if (!vlcConnected) return;
+    
+    try {
+      // First pause then seek to beginning
+      await sendVLCCommand('pause');
+      await sendVLCCommand('seek 0');
+      setIsPlaying(false);
+      setStatus('Stopped');
+      showAlert('Media stopped');
+      
+      // Notify parent component
+      if (onStatusChange) {
+        onStatusChange({ isPlaying: false });
+      }
+    } catch (error) {
+      console.error(`Error stopping playback: ${error.message}`);
+    }
+  }, [vlcConnected, sendVLCCommand, onStatusChange]);
+
+  // Seek backward/forward
+  const seekMedia = useCallback(async (seconds) => {
+    if (!vlcConnected) return;
+    
+    try {
+      const command = `seek ${seconds > 0 ? '+' : ''}${seconds}`;
+      await sendVLCCommand(command);
+      showAlert(`Jumped ${seconds > 0 ? 'forward' : 'backward'} ${Math.abs(seconds)} seconds`);
+    } catch (error) {
+      console.error(`Error seeking media: ${error.message}`);
+    }
+  }, [vlcConnected, sendVLCCommand]);
+
+  // Volume up/down
+  const adjustVolume = useCallback(async (amount) => {
+    if (!vlcConnected) return;
+    
+    try {
+      const command = amount > 0 ? 'volup 5' : 'voldown 5';
+      await sendVLCCommand(command);
+      showAlert(`Volume ${amount > 0 ? 'increased' : 'decreased'}`);
+    } catch (error) {
+      console.error(`Error adjusting volume: ${error.message}`);
+    }
+  }, [vlcConnected, sendVLCCommand]);
+
+  // Toggle fullscreen
+  const toggleFullscreen = useCallback(async () => {
+    if (!vlcConnected) return;
+    
+    try {
+      await sendVLCCommand('fullscreen');
+      showAlert('Toggled fullscreen mode');
+    } catch (error) {
+      console.error(`Error toggling fullscreen: ${error.message}`);
+    }
+  }, [vlcConnected, sendVLCCommand]);
+
+  // Effect to handle active region changes
+  useEffect(() => {
+    if (!vlcConnected || !activeRegion || !wavesurferInstance) return;
+    
+    const handleRegionPlayback = async () => {
+      try {
+        // Seek to the region start time
+        const startTime = activeRegion.start;
+        await sendVLCCommand(`seek ${Math.floor(startTime)}`);
+        
+        // Resume playback if paused
+        if (!isPlaying) {
+          await sendVLCCommand('pause'); // VLC uses the same command to toggle play/pause
+          setIsPlaying(true);
+          setStatus('Playing region');
+          
+          // Notify parent component
+          if (onStatusChange) {
+            onStatusChange({ isPlaying: true });
+          }
+        }
+      } catch (error) {
+        console.error(`Error handling region playback: ${error.message}`);
+      }
+    };
+    
+    handleRegionPlayback();
+  }, [activeRegion, vlcConnected, sendVLCCommand, wavesurferInstance, isPlaying, onStatusChange]);
+
+  // Render VLC controller buttons
+  return (
+    <div className="vlc-controls">
+      {/* Launch VLC Button */}
+      <button 
+        className="vlc-launch"
+        onClick={launchVLC}
+        disabled={!mediaFile || vlcConnected}
+      >
+        <i className="fas fa-external-link-alt"></i> Launch VLC
+      </button>
+      
+      {/* VLC Playback Controls */}
+      <div className={`vlc-playback-controls ${!vlcConnected ? 'disabled' : ''}`}>
+        <button
+          onClick={togglePlayPause}
+          disabled={!vlcConnected}
+          title={isPlaying ? 'Pause' : 'Play'}
+        >
+          <i className={`fas ${isPlaying ? 'fa-pause' : 'fa-play'}`}></i>
+        </button>
+        
+        <button
+          onClick={stopPlayback}
+          disabled={!vlcConnected}
+          title="Stop"
+        >
+          <i className="fas fa-stop"></i>
+        </button>
+        
+        <button
+          onClick={() => adjustVolume(-5)}
+          disabled={!vlcConnected}
+          title="Volume Down"
+        >
+          <i className="fas fa-volume-down"></i>
+        </button>
+        
+        <button
+          onClick={() => adjustVolume(5)}
+          disabled={!vlcConnected}
+          title="Volume Up"
+        >
+          <i className="fas fa-volume-up"></i>
+        </button>
+        
+        <button
+          onClick={() => seekMedia(-10)}
+          disabled={!vlcConnected}
+          title="Seek Backward 10s"
+        >
+          <i className="fas fa-backward"></i>
+        </button>
+        
+        <button
+          onClick={() => seekMedia(10)}
+          disabled={!vlcConnected}
+          title="Seek Forward 10s"
+        >
+          <i className="fas fa-forward"></i>
+        </button>
+        
+        <button
+          onClick={toggleFullscreen}
+          disabled={!vlcConnected}
+          title="Toggle Fullscreen"
+        >
+          <i className="fas fa-expand"></i>
+        </button>
+        
+        <div className="vlc-status">
+          <span className="status-label">VLC Status:</span>
+          <span className={`status-value ${status.toLowerCase()}`}>{status}</span>
+        </div>
+      </div>
+      
+      {/* Alert message */}
+      {alertMessage && (
+        <div className={`vlc-alert alert-${alertType}`}>
+          {alertMessage}
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default VLCController;
+
+================================================================================
 File: src/components/WaveSurferComponent.js
 ================================================================================
 
@@ -1228,21 +2916,34 @@ File: src/components/WaveSurferComponent.js
  * v1.0.1 (2025-05-19) - Fixed loading spinner and plugin issues
  * v1.0.2 (2025-05-19) - Fixed infinite update loop and duplicate plugins
  * v1.0.3 (2025-05-19) - Fixed zoom error, region looping and drag selection issues
+ * v1.0.4 (2025-05-19) - Performance optimizations and infinite loop fixes
  */
 
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { useWavesurfer } from '@wavesurfer/react';
 import '../assets/styles/main.css';
 
+// Optimization to prevent unnecessary renders
+const isEqual = (prev, next) => {
+  // Check if the audioFile, isPlaying, loopRegions, zoomLevel, and playbackSpeed are the same
+  return (
+    prev.audioFile === next.audioFile &&
+    prev.isPlaying === next.isPlaying &&
+    prev.loopRegions === next.loopRegions &&
+    prev.zoomLevel === next.zoomLevel &&
+    prev.playbackSpeed === next.playbackSpeed
+  );
+};
+
 const WaveSurferComponent = ({ 
   audioFile, 
   isPlaying, 
   loopRegions,
-  dragSelection,
   zoomLevel,
   playbackSpeed,
   onPlayPause, 
-  onReady
+  onReady,
+  onRegionActivated
 }) => {
   // Refs
   const containerRef = useRef(null);
@@ -1256,6 +2957,10 @@ const WaveSurferComponent = ({
   const [isAudioLoaded, setIsAudioLoaded] = useState(false);
   const [audioUrl, setAudioUrl] = useState(null);
   
+  // State for time display with reduced updates
+  const [displayTime, setDisplayTime] = useState('00:00');
+  const [displayDuration, setDisplayDuration] = useState('00:00');
+  
   // Show loading spinner immediately when audio file changes
   useEffect(() => {
     if (audioFile) {
@@ -1263,6 +2968,8 @@ const WaveSurferComponent = ({
       setIsAudioLoaded(false);
       // Reset plugins initialized flag when audio changes
       pluginsInitializedRef.current = false;
+      // Reset active region when audio changes
+      activeRegionRef.current = null;
     }
   }, [audioFile]);
   
@@ -1285,8 +2992,8 @@ const WaveSurferComponent = ({
     }
   }, [audioFile]);
   
-  // Initialize WaveSurfer with useWavesurfer hook
-  const { wavesurfer, currentTime, isReady } = useWavesurfer({
+  // Initialize WaveSurfer with useWavesurfer hook (with options to prevent infinite updates)
+  const { wavesurfer, isReady } = useWavesurfer({
     container: containerRef,
     height: 180,
     waveColor: '#b8b8b8',
@@ -1300,9 +3007,36 @@ const WaveSurferComponent = ({
     autoCenter: true,
   });
   
-  // Reset region color handler - won't cause re-renders
+  // Safe access to regions plugin
+  const getRegionsPlugin = useCallback(() => {
+    if (!wavesurfer) return null;
+    
+    // First try direct reference
+    if (regionsPluginRef.current) return regionsPluginRef.current;
+    
+    // Then try through wavesurfer
+    if (wavesurfer.regions) return wavesurfer.regions;
+    
+    // Finally try to find in plugins
+    const plugins = wavesurfer.getActivePlugins();
+    const regionsPlugin = plugins.find(plugin => 
+      plugin.name === 'regions' || plugin.name === 'Regions' || 
+      (plugin.constructor && plugin.constructor.name === 'RegionsPlugin')
+    );
+    
+    // Store for future use if found
+    if (regionsPlugin) {
+      regionsPluginRef.current = regionsPlugin;
+      // Also expose on wavesurfer for external access
+      wavesurfer.regions = regionsPlugin;
+    }
+    
+    return regionsPlugin;
+  }, [wavesurfer]);
+  
+  // Reset region color handler
   const resetRegionColors = useCallback(() => {
-    const regionsPlugin = regionsPluginRef.current;
+    const regionsPlugin = getRegionsPlugin();
     if (!regionsPlugin) return;
     
     try {
@@ -1315,39 +3049,55 @@ const WaveSurferComponent = ({
     } catch (error) {
       console.error("Error resetting region colors:", error);
     }
-  }, []);
+  }, [getRegionsPlugin]);
   
-  // Handle region in event - won't cause re-renders
+  // Handle region in event - simplified to match HTML implementation
   const handleRegionIn = useCallback((region) => {
-    console.log('region-in', region);
+    console.log('region-in', region.id, 'loopRegions:', loopRegions);
+    
+    // Set as active region
     activeRegionRef.current = region;
+    
+    // Highlight active region
+    try {
+      region.setOptions({ color: 'rgba(0,255,0,0.2)' });
+    } catch (error) {
+      console.error("Error highlighting region:", error);
+    }
   }, []);
   
-  // Handle region out event - won't cause re-renders
+  // Handle region out event - simplified to match HTML implementation
   const handleRegionOut = useCallback((region) => {
-    console.log('region-out', region);
+    console.log('region-out', region.id, 'loopRegions:', loopRegions);
     
-    // Only replay if this is the active region and looping is enabled
-    if (region === activeRegionRef.current && loopRegions) {
-      try {
-        region.play();
-      } catch (error) {
-        console.error("Error replaying region:", error);
+    // Check if this is the active region 
+    if (region.id === activeRegionRef.current?.id) {
+      if (loopRegions) {
+        // If looping is enabled, replay the region
+        try {
+          region.play();
+        } catch (error) {
+          console.error("Error replaying region:", error);
+        }
+      } else {
+        // If not looping, clear the active region
+        console.log('Not looping, continuing playback');
+        region.setOptions({ color: 'rgba(0,0,255,0.4)' });
+        activeRegionRef.current = null;
       }
-    } else if (region === activeRegionRef.current) {
-      activeRegionRef.current = null;
     }
   }, [loopRegions]);
   
-  // Handle region click event - won't cause re-renders
+  // Handle region click event - simplified to match HTML implementation
   const handleRegionClick = useCallback((region, e) => {
+    console.log('Region clicked!', region);
     try {
-      e.stopPropagation();
+      e.stopPropagation(); // prevent triggering a click on the waveform
       
-      // Set as active region
+      // Set this as the active region
       activeRegionRef.current = region;
       
-      // Reset all region colors
+      // Reset all regions to default color except the clicked one
       resetRegionColors();
       
       // Set this region to active color
@@ -1355,63 +3105,121 @@ const WaveSurferComponent = ({
       
       // Play the region
       region.play();
+      
+      // Update parent component play state
+      if (onPlayPause) {
+        onPlayPause(true);
+      }
+      
+      // Notify parent about region activation
+      if (props.onRegionActivated) {
+        props.onRegionActivated(region);
+      }
     } catch (error) {
       console.error("Error handling region click:", error);
     }
+  }, [resetRegionColors, onPlayPause, props]);
+  
+  // Handle region update end - simplified
+  const handleRegionUpdateEnd = useCallback((region) => {
+    console.log('region-update-end', region.id);
+    
+    // Auto-select the newly created/updated region
+    activeRegionRef.current = region;
+    
+    // Reset all region colors
+    resetRegionColors();
+    
+    // Set this region to active color
+    region.setOptions({ color: 'rgba(0,255,0,0.2)' });
   }, [resetRegionColors]);
   
-  // Handle waveform click - won't cause re-renders
+  // Handle waveform click - simplified to match HTML implementation
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const handleWaveformClick = useCallback(() => {
+    // Reset active region when clicking on the waveform (outside any region)
     activeRegionRef.current = null;
   }, []);
   
-  // Setup or update regions
-  const updateRegions = useCallback(() => {
-    const regionsPlugin = regionsPluginRef.current;
-    if (!regionsPlugin) return;
+  // Direct method to create a region programmatically - simplified
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const createRegion = useCallback((start, end) => {
+    const regionsPlugin = getRegionsPlugin();
+    if (!regionsPlugin) return null;
     
     try {
-      // Clear existing event listeners to prevent duplicates
-      regionsPlugin.un('region-in', handleRegionIn);
-      regionsPlugin.un('region-out', handleRegionOut);
-      regionsPlugin.un('region-clicked', handleRegionClick);
+      const region = regionsPlugin.addRegion({
+        start: start,
+        end: end,
+        color: 'rgba(0,0,255,0.4)',
+        drag: true,
+        resize: true
+      });
       
-      // Add event listeners
-      regionsPlugin.on('region-in', handleRegionIn);
-      regionsPlugin.on('region-out', handleRegionOut);
-      regionsPlugin.on('region-clicked', handleRegionClick);
-      
-      // Update drag selection
-      if (dragSelection) {
-        regionsPlugin.disableDragSelection(); // Clear any existing
-        regionsPlugin.enableDragSelection({
-          color: 'rgba(0,0,255,0.4)'
-        });
-      } else {
-        regionsPlugin.disableDragSelection();
-      }
+      console.log("Region created:", region);
+      return region;
     } catch (error) {
-      console.error("Error updating regions:", error);
+      console.error("Failed to create region:", error);
+      return null;
     }
-  }, [handleRegionIn, handleRegionOut, handleRegionClick, dragSelection]);
+  }, [getRegionsPlugin]);
+  
+  // Update loading state - fix the infinite update loop
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (isReady && !isAudioLoaded) {
+      console.log("Setting audio loaded");
+      setLoading(false);
+      setIsAudioLoaded(true);
+      
+      // Notify parent component that wavesurfer is ready
+      if (onReady) {
+        onReady(wavesurfer);
+      }
+    }
+  }, [isReady]);
+  
+  // Update time display less frequently
+  useEffect(() => {
+    if (!wavesurfer || !isReady || !isAudioLoaded) return;
+    
+    // Update time display every 500ms instead of every frame
+    const interval = setInterval(() => {
+      try {
+        const currentTime = wavesurfer.getCurrentTime() || 0;
+        const duration = wavesurfer.getDuration() || 0;
+        setDisplayTime(formatTime(currentTime));
+        setDisplayDuration(formatTime(duration));
+      } catch (e) {
+        // Ignore errors
+      }
+    }, 500);
+    
+    return () => clearInterval(interval);
+  }, [wavesurfer, isReady, isAudioLoaded]);
+  
+  // Log loopRegions prop change
+  useEffect(() => {
+    console.log("[LOOP STATUS] loopRegions is now:", loopRegions);
+  }, [loopRegions]);
   
   // Initialize plugins manually AFTER wavesurfer is ready
   useEffect(() => {
+    // Early exit if not ready
     if (!wavesurfer || !isReady || !minimapRef.current) return;
     
     // Only run once per wavesurfer instance
     if (pluginsInitializedRef.current) {
-      // Just update region settings if necessary
-      updateRegions();
       return;
     }
     
     console.log("Initializing plugins...");
     
-    // Import plugins dynamically and initialize
-    const initializePlugins = async () => {
+    // Use an IIFE to prevent setState in an effect without dependencies
+    (async () => {
       try {
         // Import plugins
+        console.log("Importing WaveSurfer plugins...");
         const [
           { default: Timeline },
           { default: Spectrogram },
@@ -1425,6 +3233,19 @@ const WaveSurferComponent = ({
           import('wavesurfer.js/dist/plugins/minimap.js'),
           import('wavesurfer.js/dist/plugins/hover.js')
         ]);
+        
+        console.log("Creating plugins...");
+        
+        // Add Regions first (important for order of operations)
+        const regionsPlugin = Regions.create({
+          // Always enable drag selection (true is hardcoded since we removed the checkbox)
+          dragSelection: true,
+          color: 'rgba(0,0,255,0.4)',
+        });
+        wavesurfer.registerPlugin(regionsPlugin);
+        
+        // Store regions plugin reference
+        regionsPluginRef.current = regionsPlugin;
         
         // Add Timeline
         const timelinePlugin = Timeline.create({
@@ -1468,18 +3289,23 @@ const WaveSurferComponent = ({
         });
         wavesurfer.registerPlugin(minimapPlugin);
         
-        // Add Regions
-        const regionsPlugin = Regions.create();
-        wavesurfer.registerPlugin(regionsPlugin);
-        
-        // Store regions plugin reference
-        regionsPluginRef.current = regionsPlugin;
-        
-        // Add waveform click handler
+        // Add waveform click handler - use the correct method based on wavesurfer version
         wavesurfer.on('interaction', handleWaveformClick);
         
-        // Setup regions
-        updateRegions();
+        // Add event listeners directly 
+        if (regionsPlugin) {
+          // Add event listeners
+          regionsPlugin.on('region-in', handleRegionIn);
+          regionsPlugin.on('region-out', handleRegionOut);
+          regionsPlugin.on('region-clicked', handleRegionClick);
+          regionsPlugin.on('region-update-end', handleRegionUpdateEnd);
+          
+          // Ensure the plugin is correctly exposed for external access
+          if (!wavesurfer.regions && regionsPlugin) {
+            // Add a direct reference to make clearing regions easier
+            wavesurfer.regions = regionsPlugin;
+          }
+        }
         
         // Mark as initialized
         pluginsInitializedRef.current = true;
@@ -1488,41 +3314,41 @@ const WaveSurferComponent = ({
       } catch (error) {
         console.error("Error initializing plugins:", error);
       }
+    })();
+    
+    // Cleanup function for when component unmounts
+    return () => {
+      if (wavesurfer) {
+        wavesurfer.un('interaction');
+      }
     };
-    
-    initializePlugins();
-    
-  }, [wavesurfer, isReady, updateRegions, handleWaveformClick]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps  
+  }, [
+    wavesurfer, 
+    isReady, 
+    handleWaveformClick, 
+    handleRegionIn, 
+    handleRegionOut, 
+    handleRegionClick, 
+    handleRegionUpdateEnd
+  ]);
   
-  // Update loading state
+  // Handle play/pause
   useEffect(() => {
-    if (isReady) {
-      setLoading(false);
-      setIsAudioLoaded(true);
+    if (!wavesurfer || !isReady || !isAudioLoaded) return;
+    
+    try {
+      const wsIsPlaying = wavesurfer.isPlaying();
       
-      // Notify parent component that wavesurfer is ready
-      if (onReady) {
-        onReady(wavesurfer);
+      if (isPlaying && !wsIsPlaying) {
+        wavesurfer.play();
+      } else if (!isPlaying && wsIsPlaying) {
+        wavesurfer.pause();
       }
+    } catch (error) {
+      console.error("Error updating playback status:", error);
     }
-  }, [isReady, wavesurfer, onReady]);
-  
-  // Update playback status
-  useEffect(() => {
-    if (wavesurfer && isReady) {
-      try {
-        const wsIsPlaying = wavesurfer.isPlaying();
-        
-        if (isPlaying && !wsIsPlaying) {
-          wavesurfer.play();
-        } else if (!isPlaying && wsIsPlaying) {
-          wavesurfer.pause();
-        }
-      } catch (error) {
-        console.error("Error updating playback status:", error);
-      }
-    }
-  }, [isPlaying, wavesurfer, isReady]);
+  }, [isPlaying, wavesurfer, isReady, isAudioLoaded]);
   
   // Safe zoom function - prevent errors
   const safeZoom = useCallback((level) => {
@@ -1547,11 +3373,6 @@ const WaveSurferComponent = ({
     }
   }, [zoomLevel, isAudioLoaded, isReady, wavesurfer, safeZoom]);
   
-  // Update drag selection
-  useEffect(() => {
-    updateRegions();
-  }, [dragSelection, updateRegions]);
-  
   // Update playback speed
   useEffect(() => {
     if (wavesurfer && isReady && isAudioLoaded && playbackSpeed) {
@@ -1563,34 +3384,13 @@ const WaveSurferComponent = ({
     }
   }, [playbackSpeed, wavesurfer, isReady, isAudioLoaded]);
   
-  // Play/Pause handler
-  const handlePlayPause = useCallback(() => {
-    if (wavesurfer && isReady && isAudioLoaded) {
-      try {
-        wavesurfer.playPause();
-        if (onPlayPause) {
-          onPlayPause(!wavesurfer.isPlaying());
-        }
-      } catch (error) {
-        console.error("Error toggling play/pause:", error);
-      }
-    }
-  }, [wavesurfer, isReady, isAudioLoaded, onPlayPause]);
-  
-  // Add global play/pause keyboard shortcut
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (e.code === 'Space' && wavesurfer && isReady && isAudioLoaded) {
-        e.preventDefault();
-        handlePlayPause();
-      }
-    };
-    
-    document.addEventListener('keydown', handleKeyDown);
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [wavesurfer, isReady, isAudioLoaded, handlePlayPause]);
+  // Helper function to format time in MM:SS
+  const formatTime = (seconds) => {
+    if (!seconds && seconds !== 0) return '--:--';
+    const min = Math.floor(seconds / 60);
+    const sec = Math.floor(seconds % 60);
+    return `${min.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
+  };
   
   return (
     <div className="waveform-wrapper">
@@ -1635,25 +3435,18 @@ const WaveSurferComponent = ({
       {/* Minimap for navigation - separate container */}
       <div id="minimap" ref={minimapRef}></div>
       
-      {/* Display current time (optional) */}
+      {/* Display current time (optional) - using cached values */}
       {isReady && isAudioLoaded && (
         <div className="current-time" style={{ textAlign: 'center', marginBottom: '10px' }}>
-          Time: {formatTime(currentTime)} / {formatTime(wavesurfer?.getDuration() || 0)}
+          Time: {displayTime} / {displayDuration}
         </div>
       )}
     </div>
   );
 };
 
-// Helper function to format time in MM:SS
-const formatTime = (seconds) => {
-  if (!seconds && seconds !== 0) return '--:--';
-  const min = Math.floor(seconds / 60);
-  const sec = Math.floor(seconds % 60);
-  return `${min.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
-};
-
-export default WaveSurferComponent;
+// Export with React.memo to prevent unnecessary re-renders
+export default React.memo(WaveSurferComponent, isEqual);
 
 ================================================================================
 File: src/index.js
@@ -1671,7 +3464,7 @@ File: src/index.js
 
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import App from './App';
+import App from './app';
 
 // Add global error handler to catch unhandled errors
 window.addEventListener('error', (event) => {

@@ -1,5 +1,6 @@
 Thats great improvement! but noe the regions dont work at all! and were to change the background of the waveform to make the same as the spectrogram background and lets make the canvas of all wavesurfer components 90-95% of the screen. keep other thing the same width is perfect just the waves!
 
+VLCController.js i think needs a fix?
 
 
 

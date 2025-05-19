@@ -1,18 +1,24 @@
-/**
- * File: server/vlcController.js
- * Description: Backend API for VLC controller
- * 
- * Version History:
- * v1.0.0 (2025-05-19) - Initial implementation based on Dash-VLC controller
- */
-
+// server/vlcController.js
 const express = require('express');
 const { spawn } = require('child_process');
 const net = require('net');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+const multer = require('multer');
 const router = express.Router();
+
+// Set up file upload storage
+const storage = multer.diskStorage({
+  destination: function(req, file, cb) {
+    cb(null, 'server/uploads/');
+  },
+  filename: function(req, file, cb) {
+    cb(null, Date.now() + '-' + file.originalname);
+  }
+});
+
+const upload = multer({ storage: storage });
 
 // Global variables to store state
 let vlcProcess = null;
@@ -55,6 +61,33 @@ const sendVLCCommand = async (command) => {
   });
 };
 
+// API endpoint for file upload
+router.post('/upload', upload.single('file'), (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'No file provided' 
+      });
+    }
+    
+    const filePath = path.resolve(req.file.path);
+    
+    res.json({
+      success: true,
+      filePath,
+      fileName: req.file.originalname,
+      message: 'File uploaded successfully'
+    });
+  } catch (error) {
+    console.error(`Error uploading file: ${error.message}`);
+    res.status(500).json({
+      success: false,
+      message: `Error uploading file: ${error.message}`
+    });
+  }
+});
+
 // API endpoint for launching VLC
 router.post('/launch-vlc', async (req, res) => {
   try {
@@ -87,9 +120,9 @@ router.post('/launch-vlc', async (req, res) => {
         'C:\\Program Files (x86)\\VideoLAN\\VLC\\vlc.exe'
       ];
       
-      for (const path of windowsPaths) {
-        if (fs.existsSync(path)) {
-          vlcPath = path;
+      for (const pathToCheck of windowsPaths) {
+        if (fs.existsSync(pathToCheck)) {
+          vlcPath = pathToCheck;
           break;
         }
       }
@@ -104,6 +137,8 @@ router.post('/launch-vlc', async (req, res) => {
     } else {  // Linux
       vlcPath = 'vlc';  // Try using PATH
     }
+    
+    console.log(`Launching VLC with path: ${vlcPath} for file: ${mediaPath}`);
     
     // Launch VLC with RC interface
     vlcProcess = spawn(vlcPath, [
@@ -122,6 +157,15 @@ router.post('/launch-vlc', async (req, res) => {
     vlcProcess.on('exit', (code) => {
       console.log(`VLC process exited with code ${code}`);
       vlcProcess = null;
+    });
+    
+    // Log stdout and stderr
+    vlcProcess.stdout.on('data', (data) => {
+      console.log(`VLC stdout: ${data}`);
+    });
+    
+    vlcProcess.stderr.on('data', (data) => {
+      console.log(`VLC stderr: ${data}`);
     });
     
     // Wait for VLC to initialize
@@ -170,6 +214,10 @@ router.post('/vlc-command', async (req, res) => {
     // Update state based on command
     if (command === 'pause') {
       isPlaying = !isPlaying;
+    } else if (command === 'stop' || command.startsWith('seek 0')) {
+      isPlaying = false;
+    } else if (command === 'play') {
+      isPlaying = true;
     }
     
     res.json({ 
