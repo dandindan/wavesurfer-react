@@ -1,0 +1,1686 @@
+# Project Files Review
+# Generated: 2025-05-19T09-38-02.653Z
+# Total files: 11
+
+
+================================================================================
+File: implemetation guide.md
+================================================================================
+
+# How to Implement the WaveSurfer React Solution
+
+This guide will help you implement the WaveSurfer visualization with the official `@wavesurfer/react` hook, which will solve the initialization and cleanup issues you've been experiencing.
+
+## Step 1: Update package.json and install dependencies
+
+1. Replace your `package.json` with the updated version that includes `@wavesurfer/react` and `wavesurfer.js`:
+
+```json
+{
+  "name": "wavesurfer-react",
+  "version": "1.0.0",
+  "description": "WaveSurfer with Regions - React Implementation",
+  "private": true,
+  "dependencies": {
+    "@wavesurfer/react": "^1.0.4",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-scripts": "5.0.1",
+    "wavesurfer.js": "^7.9.4"
+  },
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test",
+    "eject": "react-scripts eject"
+  },
+  "eslintConfig": {
+    "extends": ["react-app"]
+  },
+  "browserslist": {
+    "production": [">0.2%", "not dead", "not op_mini all"],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  }
+}
+```
+
+2. Install the dependencies:
+
+```bash
+npm install
+```
+
+## Step 2: Update the components
+
+1. Replace your `src/components/WaveSurferComponent.js` with the new version that uses `@wavesurfer/react`
+2. Replace your `src/App.js` with the updated version
+3. Keep your existing `src/components/StatusBar.js` and `src/components/UploadPanel.js` as they are
+4. Keep your CSS files as they are
+
+## Step 3: Remove script tags from index.html (optional)
+
+Since we're now loading WaveSurfer.js through npm, you can remove the script tags from `public/index.html` if you want:
+
+```html
+
+```
+
+Keeping them won't cause any issues, but they're redundant now.
+
+## Step 4: Start the development server
+
+```bash
+npm start
+```
+
+## Why This Works Better
+
+The `@wavesurfer/react` library is the official React integration for WaveSurfer.js, and it handles:
+
+1. Proper initialization and cleanup of WaveSurfer.js instances
+2. React lifecycle integration
+3. Preventing memory leaks
+4. Managing dependencies correctly
+
+It gives us all the power of the original WaveSurfer.js library but handles the React-specific integration challenges automatically.
+
+## Features Preserved from the Original HTML
+
+This implementation maintains all the key features from your original HTML implementation:
+
+- Waveform visualization
+- Spectrogram
+- Timeline
+- Regions (creating by dragging, clicking to play)
+- Minimap navigation
+- Zoom controls
+- Playback speed controls
+- Region looping
+
+The user interface and styling are also maintained to match your original implementation.
+
+
+================================================================================
+File: package.json
+================================================================================
+
+{
+  "name": "wavesurfer-react",
+  "version": "1.0.0",
+  "description": "WaveSurfer with Regions - React Implementation",
+  "private": true,
+  "dependencies": {
+    "@wavesurfer/react": "^1.0.4",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-scripts": "5.0.1",
+    "wavesurfer.js": "^7.9.4"
+  },
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test",
+    "eject": "react-scripts eject"
+  },
+  "eslintConfig": {
+    "extends": [
+      "react-app"
+    ]
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  }
+}
+
+================================================================================
+File: public/index.html
+================================================================================
+
+<!-- 
+  File: public/index.html 
+  Description: HTML entry point for the React application
+  
+  Version History:
+  v1.0.0 (2025-05-18) - Initial implementation
+  v1.0.1 (2025-05-18) - Added WaveSurfer scripts directly in HTML
+-->
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#000000" />
+    <meta
+      name="description"
+      content="WaveSurfer with Regions - React Implementation"
+    />
+    <title>WaveSurfer with Regions</title>
+
+    <!-- Font Awesome for icons -->
+    <link
+      rel="stylesheet"
+      href="https://use.fontawesome.com/releases/v5.15.4/css/all.css"
+      integrity="sha384-DyZ88mC6Up2uqS4h/KRgHuoeGwBcD4Ng9SiP4dIRy0EXTlnuz47vAwmeGwVChigm"
+      crossorigin="anonymous"
+    />
+
+    <!-- WaveSurfer and plugins -->
+    <script src="https://cdn.jsdelivr.net/npm/wavesurfer.js@7.9.4/dist/wavesurfer.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/wavesurfer.js@7.9.4/dist/plugins/spectrogram.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/wavesurfer.js@7.9.4/dist/plugins/timeline.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/wavesurfer.js@7.9.4/dist/plugins/hover.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/wavesurfer.js@7.9.4/dist/plugins/minimap.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/wavesurfer.js@7.9.4/dist/plugins/regions.min.js"></script>
+  </head>
+  <body>
+    <noscript>You need to enable JavaScript to run this app.</noscript>
+    <div id="root"></div>
+    <!--
+      This HTML file is a template.
+      The React app will be mounted to the div with id="root".
+    -->
+  </body>
+</html>
+
+
+================================================================================
+File: scan_project.js
+================================================================================
+
+/**
+ * File: scan_project.js
+ * Description: Script to scan all project files and output their contents for review
+ * 
+ * Version History:
+ * v1.0.0 (2025-05-18) - Initial implementation
+ */
+
+const fs = require('fs');
+const path = require('path');
+
+// Directories to exclude
+const excludeDirs = ['node_modules', '.git', 'build', 'dist'];
+
+// Files to exclude
+const excludeFiles = ['.DS_Store', '.gitignore', 'package-lock.json'];
+
+// File extensions to include
+const includeExtensions = ['.js', '.jsx', '.html', '.css', '.json', '.md'];
+
+// Configuration
+const outputFile = 'project_files_review.txt';
+const startDir = '.'; // Current directory
+
+// Helper function to check if a file should be included
+function shouldIncludeFile(filePath) {
+  const fileName = path.basename(filePath);
+  
+  // Skip excluded files
+  if (excludeFiles.includes(fileName)) {
+    return false;
+  }
+  
+  // Check file extension
+  const ext = path.extname(filePath).toLowerCase();
+  if (!includeExtensions.includes(ext)) {
+    return false;
+  }
+  
+  return true;
+}
+
+// Helper function to scan a directory recursively
+function scanDirectory(dir, output) {
+  try {
+    // Read directory contents
+    const items = fs.readdirSync(dir);
+    
+    // Process each item
+    for (const item of items) {
+      const itemPath = path.join(dir, item);
+      const stat = fs.statSync(itemPath);
+      
+      // Process directories
+      if (stat.isDirectory()) {
+        // Skip excluded directories
+        if (excludeDirs.includes(item)) {
+          continue;
+        }
+        
+        // Recursively scan subdirectories
+        scanDirectory(itemPath, output);
+      } 
+      // Process files
+      else if (stat.isFile() && shouldIncludeFile(itemPath)) {
+        // Read file content
+        const content = fs.readFileSync(itemPath, 'utf8');
+        
+        // Add to output
+        output.push({
+          path: itemPath,
+          content: content
+        });
+      }
+    }
+  } catch (error) {
+    console.error(`Error scanning directory ${dir}:`, error);
+  }
+}
+
+// Main function
+function main() {
+  // Get current date and time
+  const now = new Date().toISOString().replace(/:/g, '-');
+  
+  console.log(`Starting project scan at: ${now}`);
+  console.log(`Output will be saved to: ${outputFile}`);
+  
+  // Collect all files
+  const files = [];
+  scanDirectory(startDir, files);
+  
+  // Sort files by path
+  files.sort((a, b) => a.path.localeCompare(b.path));
+  
+  // Create output
+  let output = `# Project Files Review\n`;
+  output += `# Generated: ${now}\n`;
+  output += `# Total files: ${files.length}\n\n`;
+  
+  // Add each file
+  files.forEach((file, index) => {
+    output += `\n${'='.repeat(80)}\n`;
+    output += `File: ${file.path}\n`;
+    output += `${'='.repeat(80)}\n\n`;
+    output += file.content;
+    output += '\n';
+  });
+  
+  // Write output to file
+  fs.writeFileSync(outputFile, output);
+  
+  console.log(`Scan complete. Found ${files.length} files.`);
+  console.log(`Output saved to: ${outputFile}`);
+}
+
+// Run the script
+main();
+
+================================================================================
+File: src/App.js
+================================================================================
+
+/**
+ * File: src/App.js
+ * Description: Main application component
+ * 
+ * Version History:
+ * v1.0.0 (2025-05-18) - Initial implementation based on original HTML
+ * v1.0.1 (2025-05-19) - Updated to use @wavesurfer/react
+ */
+
+import React, { useState, useRef, useEffect } from 'react';
+import WaveSurferComponent from './components/WaveSurferComponent';
+import StatusBar from './components/StatusBar';
+import UploadPanel from './components/UploadPanel';
+import './assets/styles/main.css';
+
+function App() {
+  // State
+  const [audioFile, setAudioFile] = useState(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [fileName, setFileName] = useState("");
+  const [isReady, setIsReady] = useState(false);
+  const [zoomLevel, setZoomLevel] = useState(100);
+  const [playbackSpeed, setPlaybackSpeed] = useState(1.0);
+  const [loopRegions, setLoopRegions] = useState(true);
+  const [dragSelection, setDragSelection] = useState(true);
+  const [status, setStatus] = useState({ text: "No audio loaded", type: "info" });
+  const [alert, setAlert] = useState({ message: "", isOpen: false, type: "info" });
+  
+  // Refs
+  const wavesurferRef = useRef(null);
+  
+  // Handler for file uploads
+  const handleFileUpload = (file) => {
+    if (!file) return;
+    
+    setAudioFile(file);
+    setFileName(file.name);
+    setIsPlaying(false);
+    setIsReady(false);
+    setStatus({ text: "Loading...", type: "warning" });
+    setAlert({ message: `File uploaded: ${file.name}`, isOpen: true, type: "success" });
+  };
+  
+  // Handler for play/pause
+  const handlePlayPause = (isCurrentlyPlaying) => {
+    // If isCurrentlyPlaying is provided, use it, otherwise toggle
+    const newPlayingState = isCurrentlyPlaying !== undefined ? isCurrentlyPlaying : !isPlaying;
+    setIsPlaying(newPlayingState);
+    
+    setAlert({
+      message: newPlayingState ? "Audio playing" : "Audio paused",
+      isOpen: true,
+      type: "info"
+    });
+  };
+  
+  // Handler for WaveSurfer ready event
+  const handleReady = (wavesurfer) => {
+    wavesurferRef.current = wavesurfer;
+    setIsReady(true);
+    setStatus({ text: `Loaded: ${fileName}`, type: "success" });
+  };
+  
+  // Handler for zoom in
+  const handleZoomIn = () => {
+    const newZoom = Math.min(1000, zoomLevel + 50);
+    setZoomLevel(newZoom);
+  };
+  
+  // Handler for zoom out
+  const handleZoomOut = () => {
+    const newZoom = Math.max(10, zoomLevel - 50);
+    setZoomLevel(newZoom);
+  };
+  
+  // Handler for reset zoom
+  const handleResetZoom = () => {
+    setZoomLevel(100);
+  };
+  
+  // Handler for clear regions
+  const handleClearRegions = () => {
+    if (wavesurferRef.current) {
+      const regionsPlugin = wavesurferRef.current.getActivePlugins().find(plugin => plugin.name === 'regions');
+      if (regionsPlugin) {
+        regionsPlugin.clearRegions();
+        setAlert({ message: "All regions cleared", isOpen: true, type: "warning" });
+      }
+    }
+  };
+  
+  // Close alert after 3 seconds
+  useEffect(() => {
+    if (alert.isOpen) {
+      const timer = setTimeout(() => {
+        setAlert(prev => ({ ...prev, isOpen: false }));
+      }, 3000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [alert.isOpen]);
+  
+  return (
+    <div className="container">
+      <h1>WaveSurfer with Regions</h1>
+      
+      <StatusBar status={status.text} type={status.type} />
+      
+      <UploadPanel onFileUpload={handleFileUpload} />
+      
+      <WaveSurferComponent
+        audioFile={audioFile}
+        isPlaying={isPlaying}
+        loopRegions={loopRegions}
+        dragSelection={dragSelection}
+        zoomLevel={zoomLevel}
+        playbackSpeed={playbackSpeed}
+        onPlayPause={handlePlayPause}
+        onReady={handleReady}
+      />
+      
+      {/* Controls Row - Matching the original HTML structure */}
+      <div className="controls-row">
+        {/* Zoom control slider */}
+        <div className="slider-container">
+          <span className="slider-label">Zoom:</span>
+          <input
+            type="range"
+            id="zoom-slider"
+            min="10"
+            max="1000"
+            value={zoomLevel}
+            onChange={(e) => setZoomLevel(Number(e.target.value))}
+          />
+          <span id="zoom-value" className="slider-value">{zoomLevel}</span>
+        </div>
+
+        {/* Playback speed control slider */}
+        <div className="slider-container">
+          <span className="slider-label">Speed:</span>
+          <input
+            type="range"
+            id="speed-slider"
+            min="0.5"
+            max="3"
+            step="0.1"
+            value={playbackSpeed}
+            onChange={(e) => setPlaybackSpeed(Number(e.target.value))}
+          />
+          <span id="speed-value" className="slider-value">{playbackSpeed.toFixed(1)}x</span>
+        </div>
+
+        {/* Region looping control */}
+        <div className="checkbox-container">
+          <input 
+            type="checkbox" 
+            id="loop-regions" 
+            checked={loopRegions}
+            onChange={(e) => setLoopRegions(e.target.checked)}
+          />
+          <label htmlFor="loop-regions">Loop regions</label>
+        </div>
+        
+        {/* Drag selection control */}
+        <div className="checkbox-container">
+          <input 
+            type="checkbox" 
+            id="drag-selection" 
+            checked={dragSelection}
+            onChange={(e) => setDragSelection(e.target.checked)}
+          />
+          <label htmlFor="drag-selection">Enable drag</label>
+        </div>
+      </div>
+      
+      {/* Player control buttons - Directly from original HTML */}
+      <div className="controls">
+        <button id="play-pause" onClick={() => handlePlayPause()}>
+          {isPlaying ? 'Pause' : 'Play'}
+        </button>
+        <button id="zoom-in" onClick={handleZoomIn} disabled={!isReady}>
+          Zoom In
+        </button>
+        <button id="zoom-out" onClick={handleZoomOut} disabled={!isReady}>
+          Zoom Out
+        </button>
+        <button id="reset-zoom" onClick={handleResetZoom} disabled={!isReady}>
+          Reset Zoom
+        </button>
+        <button id="clear-regions" className="danger" onClick={handleClearRegions} disabled={!isReady}>
+          Clear Regions
+        </button>
+      </div>
+      
+      {alert.isOpen && (
+        <div className={`alert alert-${alert.type}`}>
+          {alert.message}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default App;
+
+================================================================================
+File: src/assets/styles/main.css
+================================================================================
+
+/**
+ * File: src/assets/styles/main.css
+ * Description: Main application styling
+ * 
+ * Version History:
+ * v1.0.0 (2025-05-18) - Initial implementation based on original HTML
+ * v1.0.1 (2025-05-19) - Fixed corrupted CSS rule for waveform container
+ */
+
+body {
+  background-color: #212529;
+  color: #f8f9fa;
+  font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  margin: 0;
+  padding: 20px;
+}
+
+.container {
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+h1 {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+/* Card styling */
+.card {
+  background-color: #1a1a1a;
+  border-radius: 5px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+  margin-bottom: 20px;
+}
+
+.card-body {
+  padding: 20px;
+}
+
+/* Single container for waveform, spectrogram and timeline */
+#waveform-container {
+  width: 100%;
+  margin-bottom: 20px;
+  background-color: #1a1a1a;
+  border-radius: 5px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+  position: relative;
+  /* Default height will include both waveform, spectrogram and timeline */
+  height: 560px;
+  /* Makes sure content is visible */
+  overflow: visible !important;
+}
+
+/* Only keep minimap separate */
+#minimap {
+  height: 40px;
+  margin-bottom: 20px;
+  background-color: #1a1a1a;
+  border-radius: 5px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+}
+
+/* Controls row */
+.controls-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  max-width: 1000px;
+  margin: 20px auto;
+  padding: 15px;
+  background-color: #1d1919;
+  border-radius: 25px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+.slider-container {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 250px;
+  margin: 0 10px;
+}
+
+.slider-label {
+  margin-right: 5px;
+  min-width: 45px;
+  white-space: nowrap;
+  color: #adb5bd;
+}
+
+.slider-value {
+  min-width: 35px;
+  text-align: right;
+  color: #0dcaf0;
+}
+
+input[type='range'] {
+  flex-grow: 1;
+  margin: 0 5px;
+  height: 8px;
+  border-radius: 4px;
+  background: #555555;
+  outline: none;
+}
+
+input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #4363ca;
+  cursor: pointer;
+}
+
+input[type='range']::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #4363ca;
+  cursor: pointer;
+}
+
+.checkbox-container {
+  display: flex;
+  align-items: center;
+  margin: 0 10px;
+  min-width: 120px;
+}
+
+/* Player control buttons */
+.controls {
+  display: flex;
+  justify-content: center;
+  margin: 20px 0;
+  flex-wrap: wrap;
+}
+
+button {
+  background-color: #4363ca;
+  color: #ffffff;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 5px;
+  margin: 5px 10px;
+  cursor: pointer;
+}
+
+button:hover {
+  background-color: #357ea8;
+}
+
+button.danger {
+  background-color: #dc3545;
+}
+
+button.danger:hover {
+  background-color: #c82333;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Loading container */
+.loading-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  background-color: rgba(26, 26, 26, 0.8);
+  z-index: 10;
+  border-radius: 5px;
+}
+
+.simple-spinner {
+  width: 40px;
+  height: 40px;
+  margin-bottom: 20px;
+  border: 4px solid rgba(13, 202, 240, 0.2);
+  border-top: 4px solid #0dcaf0;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+.loading-text {
+  color: #f8f9fa;
+  font-size: 1.2rem;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* Status styling */
+.status {
+  text-align: center;
+  padding: 10px;
+  margin: 10px 0;
+  background-color: #222;
+  border-radius: 5px;
+}
+
+.text-info {
+  color: #0dcaf0 !important;
+}
+
+.text-success {
+  color: #28a745 !important;
+}
+
+.text-warning {
+  color: #ffc107 !important;
+}
+
+.text-danger {
+  color: #dc3545 !important;
+}
+
+.fw-bold {
+  font-weight: bold !important;
+}
+
+/* Alert message styling */
+.alert {
+  padding: 12px 16px;
+  margin-top: 15px;
+  border-radius: 8px;
+  text-align: center;
+  animation: fadeIn 0.3s ease-in;
+}
+
+.alert-info {
+  background-color: rgba(13, 202, 240, 0.15);
+  color: #0dcaf0;
+}
+
+.alert-success {
+  background-color: rgba(40, 167, 69, 0.15);
+  color: #28a745;
+}
+
+.alert-warning {
+  background-color: rgba(255, 193, 7, 0.15);
+  color: #ffc107;
+}
+
+.alert-danger {
+  background-color: rgba(220, 53, 69, 0.15);
+  color: #dc3545;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Utility classes */
+.mb-4 {
+  margin-bottom: 1.5rem !important;
+}
+
+.m-0 {
+  margin: 0 !important;
+}
+
+.me-2 {
+  margin-right: 0.5rem !important;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  #waveform-container {
+    height: 400px;
+  }
+
+  .slider-container {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .slider-label {
+    margin-bottom: 5px;
+  }
+
+  .controls-row {
+    flex-direction: column;
+  }
+
+  .checkbox-container {
+    margin: 10px 0;
+  }
+}
+
+
+================================================================================
+File: src/assets/styles/upload-panel.css
+================================================================================
+
+/**
+File: src/assets/styles/upload-panel.css
+Description: Styling for the upload panel
+Version History:
+v1.0.0 (2025-05-18) - Initial implementation */
+/* Upload toggle styling */
+
+.upload-toggle {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 20px;
+  cursor: pointer;
+  border-bottom: 1px solid #333;
+  transition: background-color 0.2s ease;
+}
+
+.upload-toggle:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.upload-toggle-icon {
+  transition: transform 0.3s;
+}
+
+.upload-toggle-icon.open {
+  transform: rotate(180deg);
+}
+
+/* Upload area enhanced hover styling */
+.upload-area {
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
+  border: 2px dashed #6c757d;
+  border-radius: 10px;
+  padding: 40px 20px;
+  text-align: center;
+  cursor: pointer;
+  margin: 0 auto;
+  max-width: 65%;
+}
+
+.upload-area:hover {
+  transform: scale(1.03) !important;
+  box-shadow: 0 8px 20px rgba(13, 202, 240, 0.2) !important;
+  border-color: #0dcaf0 !important;
+  background-color: rgba(13, 202, 240, 0.1) !important;
+}
+
+.upload-area.drag-active {
+  border-color: #0dcaf0;
+  background-color: rgba(13, 202, 240, 0.1);
+  transform: scale(1.03);
+}
+
+#upload-icon {
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
+}
+
+.upload-area:hover #upload-icon {
+  transform: translateY(-8px) scale(1.1) !important;
+  color: #0dcaf0 !important;
+  filter: drop-shadow(0 5px 10px rgba(13, 202, 240, 0.3));
+}
+
+#upload-text {
+  transition: all 0.4s ease !important;
+}
+
+.upload-area:hover #upload-text {
+  transform: scale(1.05);
+  color: #0dcaf0 !important;
+  font-weight: bold !important;
+}
+
+/* Hidden file input */
+.hidden-input {
+  display: none;
+}
+
+/* File info display */
+#file-info-display {
+  text-align: center;
+  padding: 10px 0;
+}
+
+/* Launch button enhanced hover */
+.launch-btn {
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
+}
+
+.launch-btn:hover {
+  transform: translateY(-3px) scale(1.03) !important;
+  box-shadow: 0 8px 20px rgba(13, 202, 240, 0.4) !important;
+  background-color: #0dcaf0 !important;
+  letter-spacing: 0.5px;
+}
+
+.launch-btn:active {
+  transform: translateY(1px) !important;
+  box-shadow: 0 3px 10px rgba(13, 202, 240, 0.3) !important;
+}
+
+/* Utility classes */
+.text-info-emphasis {
+  color: #6c757d;
+}
+
+.fw-bold {
+  font-weight: bold;
+}
+
+.small {
+  font-size: 0.875rem;
+}
+
+.mt-1 {
+  margin-top: 0.25rem;
+}
+
+.mt-2 {
+  margin-top: 0.5rem;
+}
+
+.mt-4 {
+  margin-top: 1.5rem;
+}
+
+.mb-3 {
+  margin-bottom: 1rem;
+}
+
+.text-center {
+  text-align: center;
+}
+
+.text-muted {
+  color: #6c757d;
+}
+
+.text-light {
+  color: #f8f9fa;
+}
+
+.text-success {
+  color: #28a745;
+}
+
+/* Font Awesome icon overrides */
+.fas {
+  font-family: 'Font Awesome 5 Free';
+}
+
+.fa-3x {
+  font-size: 3em;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .upload-area {
+    max-width: 100%;
+    padding: 20px 10px;
+  }
+}
+
+
+================================================================================
+File: src/components/StatusBar.js
+================================================================================
+
+/**
+ * File: src/components/StatusBar.js
+ * Description: Status indicator component
+ * 
+ * Version History:
+ * v1.0.0 (2025-05-18) - Initial implementation
+ */
+
+import React from 'react';
+
+const StatusBar = ({ status, type }) => {
+  return (
+    <div className="status">
+      <span className={`text-${type} fw-bold`}>
+        Status: {status}
+      </span>
+    </div>
+  );
+};
+
+export default StatusBar;
+
+================================================================================
+File: src/components/UploadPanel.js
+================================================================================
+
+/**
+ * File: src/components/UploadPanel.js
+ * Description: File upload panel component
+ * 
+ * Version History:
+ * v1.0.0 (2025-05-18) - Initial implementation
+ */
+
+import React, { useState, useRef } from 'react';
+import '../assets/styles/upload-panel.css';
+
+const UploadPanel = ({ onFileUpload }) => {
+  const [isDragging, setIsDragging] = useState(false);
+  const [uploadedFile, setUploadedFile] = useState(null);
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const fileInputRef = useRef(null);
+  
+  // Handle file selection
+  const handleFileChange = (event) => {
+    const files = event.target.files;
+    if (files && files.length > 0) {
+      const file = files[0];
+      handleFile(file);
+    }
+  };
+  
+  // Handle file drop
+  const handleDrop = (event) => {
+    event.preventDefault();
+    setIsDragging(false);
+    
+    if (event.dataTransfer.files && event.dataTransfer.files.length > 0) {
+      const file = event.dataTransfer.files[0];
+      handleFile(file);
+    }
+  };
+  
+  // Process the uploaded file
+  const handleFile = (file) => {
+    // Check if file is audio or video
+    const acceptedTypes = [
+      'audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/ogg', 'audio/flac', 'audio/aac', 
+      'video/mp4', 'video/webm', 'video/ogg', 'video/avi', 'video/mkv', 'video/mov'
+    ];
+    
+    if (!acceptedTypes.includes(file.type)) {
+      alert('Please upload an audio or video file.');
+      return;
+    }
+    
+    setUploadedFile(file);
+    onFileUpload(file);
+  };
+  
+  // Drag events
+  const handleDragOver = (event) => {
+    event.preventDefault();
+    setIsDragging(true);
+  };
+  
+  const handleDragLeave = () => {
+    setIsDragging(false);
+  };
+  
+  // Format file size
+  const formatFileSize = (size) => {
+    // Define size units
+    const units = ["B", "KB", "MB", "GB", "TB"];
+    
+    // Calculate the appropriate unit
+    let i = 0;
+    let sizeBytes = size;
+    while (sizeBytes >= 1024 && i < units.length - 1) {
+      sizeBytes /= 1024;
+      i++;
+    }
+    
+    // Format the result with 2 decimal places if needed
+    if (i > 0) {
+      return `${sizeBytes.toFixed(2)} ${units[i]}`;
+    } else {
+      return `${sizeBytes} ${units[i]}`;
+    }
+  };
+  
+  // Get file type display
+  const getFileTypeDisplay = (file) => {
+    if (file.type.startsWith('audio/')) return 'audio';
+    if (file.type.startsWith('video/')) return 'video';
+    return 'file';
+  };
+  
+  return (
+    <div className="card mb-4">
+      {/* Collapse toggle */}
+      <div className="upload-toggle" onClick={() => setIsCollapsed(!isCollapsed)}>
+        <h3 className="m-0">
+          <i className="fas fa-file-upload me-2 text-info"></i>
+          Upload Audio/Video
+        </h3>
+        <i className={`fas fa-chevron-down upload-toggle-icon ${isCollapsed ? '' : 'open'}`}></i>
+      </div>
+      
+      {/* Collapsible content */}
+      {!isCollapsed && (
+        <div className="card-body">
+          {/* Upload area */}
+          <div 
+            className={`upload-area ${isDragging ? 'drag-active' : ''}`}
+            onClick={() => fileInputRef.current.click()}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+          >
+            <i id="upload-icon" className="fas fa-file-upload fa-3x mb-3 text-info-emphasis"></i>
+            <div id="upload-text" className="fw-bold">Drag and Drop or Click to Upload</div>
+            <div className="text-muted small mt-1">Supports audio and video files up to 4GB</div>
+            
+            {/* Hidden file input */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              className="hidden-input"
+              accept="audio/*,video/*"
+              onChange={handleFileChange}
+              id="file-input"
+            />
+          </div>
+          
+          {/* Display file info if uploaded */}
+          {uploadedFile && (
+            <div id="file-info-display" className="text-light font-italic small mt-2">
+              <i className="fas fa-check-circle text-success me-2"></i>
+              Uploaded: {uploadedFile.name} ({formatFileSize(uploadedFile.size)}, {getFileTypeDisplay(uploadedFile)})
+            </div>
+          )}
+          
+          {/* Launch button - only show if file is uploaded */}
+          {uploadedFile && (
+            <div className="text-center">
+              <button
+                id="launch-vlc"
+                className="mt-4 launch-btn fw-bold"
+                style={{
+                  fontSize: '1.2rem',
+                  padding: '0.7rem 1.5rem',
+                  borderRadius: '30px',
+                  boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+                  transition: 'all 0.3s ease',
+                  backgroundColor: '#4363ca',
+                  color: 'white',
+                  border: 'none',
+                  cursor: 'pointer',
+                }}
+                onClick={() => onFileUpload(uploadedFile)} // Re-load the same file
+              >
+                <i className="fas fa-play-circle me-2"></i>
+                Load Audio
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default UploadPanel;
+
+================================================================================
+File: src/components/WaveSurferComponent.js
+================================================================================
+
+/**
+ * File: src/components/WaveSurferComponent.js
+ * Description: WaveSurfer component using the official @wavesurfer/react hook
+ * 
+ * Version History:
+ * v1.0.0 (2025-05-19) - Implementation using @wavesurfer/react
+ * v1.0.1 (2025-05-19) - Fixed loading spinner and plugin issues
+ * v1.0.2 (2025-05-19) - Fixed infinite update loop and duplicate plugins
+ * v1.0.3 (2025-05-19) - Fixed zoom error, region looping and drag selection issues
+ */
+
+import React, { useRef, useState, useEffect, useCallback } from 'react';
+import { useWavesurfer } from '@wavesurfer/react';
+import '../assets/styles/main.css';
+
+const WaveSurferComponent = ({ 
+  audioFile, 
+  isPlaying, 
+  loopRegions,
+  dragSelection,
+  zoomLevel,
+  playbackSpeed,
+  onPlayPause, 
+  onReady
+}) => {
+  // Refs
+  const containerRef = useRef(null);
+  const minimapRef = useRef(null);
+  const pluginsInitializedRef = useRef(false);
+  const regionsPluginRef = useRef(null);
+  const activeRegionRef = useRef(null);
+  
+  // State
+  const [loading, setLoading] = useState(true);
+  const [isAudioLoaded, setIsAudioLoaded] = useState(false);
+  const [audioUrl, setAudioUrl] = useState(null);
+  
+  // Show loading spinner immediately when audio file changes
+  useEffect(() => {
+    if (audioFile) {
+      setLoading(true);
+      setIsAudioLoaded(false);
+      // Reset plugins initialized flag when audio changes
+      pluginsInitializedRef.current = false;
+    }
+  }, [audioFile]);
+  
+  // Convert File to URL if needed
+  useEffect(() => {
+    if (audioFile) {
+      if (audioFile instanceof File) {
+        const url = URL.createObjectURL(audioFile);
+        setAudioUrl(url);
+        
+        // Clean up URL when component unmounts or audio changes
+        return () => {
+          URL.revokeObjectURL(url);
+        };
+      } else {
+        setAudioUrl(audioFile);
+      }
+    } else {
+      setAudioUrl(null);
+    }
+  }, [audioFile]);
+  
+  // Initialize WaveSurfer with useWavesurfer hook
+  const { wavesurfer, currentTime, isReady } = useWavesurfer({
+    container: containerRef,
+    height: 180,
+    waveColor: '#b8b8b8',
+    progressColor: '#08c3f2',
+    cursorColor: '#ff5722',
+    cursorWidth: 2,
+    minPxPerSec: 100, // Start with default zoom - will update later
+    url: audioUrl,
+    normalize: true,
+    autoScroll: true,
+    autoCenter: true,
+  });
+  
+  // Reset region color handler - won't cause re-renders
+  const resetRegionColors = useCallback(() => {
+    const regionsPlugin = regionsPluginRef.current;
+    if (!regionsPlugin) return;
+    
+    try {
+      const allRegions = regionsPlugin.getRegions();
+      Object.values(allRegions).forEach((region) => {
+        if (region.id !== (activeRegionRef.current?.id)) {
+          region.setOptions({ color: 'rgba(0,0,255,0.4)' });
+        }
+      });
+    } catch (error) {
+      console.error("Error resetting region colors:", error);
+    }
+  }, []);
+  
+  // Handle region in event - won't cause re-renders
+  const handleRegionIn = useCallback((region) => {
+    console.log('region-in', region);
+    activeRegionRef.current = region;
+  }, []);
+  
+  // Handle region out event - won't cause re-renders
+  const handleRegionOut = useCallback((region) => {
+    console.log('region-out', region);
+    
+    // Only replay if this is the active region and looping is enabled
+    if (region === activeRegionRef.current && loopRegions) {
+      try {
+        region.play();
+      } catch (error) {
+        console.error("Error replaying region:", error);
+      }
+    } else if (region === activeRegionRef.current) {
+      activeRegionRef.current = null;
+    }
+  }, [loopRegions]);
+  
+  // Handle region click event - won't cause re-renders
+  const handleRegionClick = useCallback((region, e) => {
+    try {
+      e.stopPropagation();
+      
+      // Set as active region
+      activeRegionRef.current = region;
+      
+      // Reset all region colors
+      resetRegionColors();
+      
+      // Set this region to active color
+      region.setOptions({ color: 'rgba(0,255,0,0.2)' });
+      
+      // Play the region
+      region.play();
+    } catch (error) {
+      console.error("Error handling region click:", error);
+    }
+  }, [resetRegionColors]);
+  
+  // Handle waveform click - won't cause re-renders
+  const handleWaveformClick = useCallback(() => {
+    activeRegionRef.current = null;
+  }, []);
+  
+  // Setup or update regions
+  const updateRegions = useCallback(() => {
+    const regionsPlugin = regionsPluginRef.current;
+    if (!regionsPlugin) return;
+    
+    try {
+      // Clear existing event listeners to prevent duplicates
+      regionsPlugin.un('region-in', handleRegionIn);
+      regionsPlugin.un('region-out', handleRegionOut);
+      regionsPlugin.un('region-clicked', handleRegionClick);
+      
+      // Add event listeners
+      regionsPlugin.on('region-in', handleRegionIn);
+      regionsPlugin.on('region-out', handleRegionOut);
+      regionsPlugin.on('region-clicked', handleRegionClick);
+      
+      // Update drag selection
+      if (dragSelection) {
+        regionsPlugin.disableDragSelection(); // Clear any existing
+        regionsPlugin.enableDragSelection({
+          color: 'rgba(0,0,255,0.4)'
+        });
+      } else {
+        regionsPlugin.disableDragSelection();
+      }
+    } catch (error) {
+      console.error("Error updating regions:", error);
+    }
+  }, [handleRegionIn, handleRegionOut, handleRegionClick, dragSelection]);
+  
+  // Initialize plugins manually AFTER wavesurfer is ready
+  useEffect(() => {
+    if (!wavesurfer || !isReady || !minimapRef.current) return;
+    
+    // Only run once per wavesurfer instance
+    if (pluginsInitializedRef.current) {
+      // Just update region settings if necessary
+      updateRegions();
+      return;
+    }
+    
+    console.log("Initializing plugins...");
+    
+    // Import plugins dynamically and initialize
+    const initializePlugins = async () => {
+      try {
+        // Import plugins
+        const [
+          { default: Timeline },
+          { default: Spectrogram },
+          { default: Regions },
+          { default: Minimap },
+          { default: Hover }
+        ] = await Promise.all([
+          import('wavesurfer.js/dist/plugins/timeline.js'),
+          import('wavesurfer.js/dist/plugins/spectrogram.js'),
+          import('wavesurfer.js/dist/plugins/regions.js'),
+          import('wavesurfer.js/dist/plugins/minimap.js'),
+          import('wavesurfer.js/dist/plugins/hover.js')
+        ]);
+        
+        // Add Timeline
+        const timelinePlugin = Timeline.create({
+          height: 30,
+          timeInterval: 1,
+          primaryColor: '#ffffff',
+          secondaryColor: '#aaaaaa',
+          primaryFontColor: '#ffffff',
+          secondaryFontColor: '#dddddd',
+        });
+        wavesurfer.registerPlugin(timelinePlugin);
+        
+        // Add Spectrogram
+        const spectrogramPlugin = Spectrogram.create({
+          labels: true,
+          height: 350,
+          splitChannels: false,
+          colorMap: 'roseus',
+          frequencyMax: 8000,
+          frequencyMin: 0,
+          fftSamples: 512,
+          noverlap: 0,
+        });
+        wavesurfer.registerPlugin(spectrogramPlugin);
+        
+        // Add Hover
+        const hoverPlugin = Hover.create({
+          lineColor: '#ff5722',
+          lineWidth: 2,
+          labelBackground: '#111111',
+          labelColor: '#ffffff',
+        });
+        wavesurfer.registerPlugin(hoverPlugin);
+        
+        // Add Minimap
+        const minimapPlugin = Minimap.create({
+          container: minimapRef.current,
+          height: 40,
+          waveColor: '#b8b8b8',
+          progressColor: '#08c3f2',
+        });
+        wavesurfer.registerPlugin(minimapPlugin);
+        
+        // Add Regions
+        const regionsPlugin = Regions.create();
+        wavesurfer.registerPlugin(regionsPlugin);
+        
+        // Store regions plugin reference
+        regionsPluginRef.current = regionsPlugin;
+        
+        // Add waveform click handler
+        wavesurfer.on('interaction', handleWaveformClick);
+        
+        // Setup regions
+        updateRegions();
+        
+        // Mark as initialized
+        pluginsInitializedRef.current = true;
+        
+        console.log("Plugins initialized successfully");
+      } catch (error) {
+        console.error("Error initializing plugins:", error);
+      }
+    };
+    
+    initializePlugins();
+    
+  }, [wavesurfer, isReady, updateRegions, handleWaveformClick]);
+  
+  // Update loading state
+  useEffect(() => {
+    if (isReady) {
+      setLoading(false);
+      setIsAudioLoaded(true);
+      
+      // Notify parent component that wavesurfer is ready
+      if (onReady) {
+        onReady(wavesurfer);
+      }
+    }
+  }, [isReady, wavesurfer, onReady]);
+  
+  // Update playback status
+  useEffect(() => {
+    if (wavesurfer && isReady) {
+      try {
+        const wsIsPlaying = wavesurfer.isPlaying();
+        
+        if (isPlaying && !wsIsPlaying) {
+          wavesurfer.play();
+        } else if (!isPlaying && wsIsPlaying) {
+          wavesurfer.pause();
+        }
+      } catch (error) {
+        console.error("Error updating playback status:", error);
+      }
+    }
+  }, [isPlaying, wavesurfer, isReady]);
+  
+  // Safe zoom function - prevent errors
+  const safeZoom = useCallback((level) => {
+    if (!wavesurfer || !isReady || !isAudioLoaded) return;
+    
+    try {
+      wavesurfer.zoom(level);
+    } catch (error) {
+      console.warn("Zoom error - audio may not be fully loaded yet:", error);
+    }
+  }, [wavesurfer, isReady, isAudioLoaded]);
+  
+  // Update zoom level - but only after audio is fully loaded
+  useEffect(() => {
+    if (isAudioLoaded && isReady && wavesurfer) {
+      // Use a small timeout to ensure audio is fully processed
+      const zoomTimer = setTimeout(() => {
+        safeZoom(zoomLevel);
+      }, 100);
+      
+      return () => clearTimeout(zoomTimer);
+    }
+  }, [zoomLevel, isAudioLoaded, isReady, wavesurfer, safeZoom]);
+  
+  // Update drag selection
+  useEffect(() => {
+    updateRegions();
+  }, [dragSelection, updateRegions]);
+  
+  // Update playback speed
+  useEffect(() => {
+    if (wavesurfer && isReady && isAudioLoaded && playbackSpeed) {
+      try {
+        wavesurfer.setPlaybackRate(playbackSpeed);
+      } catch (error) {
+        console.error("Error setting playback speed:", error);
+      }
+    }
+  }, [playbackSpeed, wavesurfer, isReady, isAudioLoaded]);
+  
+  // Play/Pause handler
+  const handlePlayPause = useCallback(() => {
+    if (wavesurfer && isReady && isAudioLoaded) {
+      try {
+        wavesurfer.playPause();
+        if (onPlayPause) {
+          onPlayPause(!wavesurfer.isPlaying());
+        }
+      } catch (error) {
+        console.error("Error toggling play/pause:", error);
+      }
+    }
+  }, [wavesurfer, isReady, isAudioLoaded, onPlayPause]);
+  
+  // Add global play/pause keyboard shortcut
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.code === 'Space' && wavesurfer && isReady && isAudioLoaded) {
+        e.preventDefault();
+        handlePlayPause();
+      }
+    };
+    
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [wavesurfer, isReady, isAudioLoaded, handlePlayPause]);
+  
+  return (
+    <div className="waveform-wrapper">
+      {/* Single container for waveform, spectrogram and timeline */}
+      <div id="waveform-container" ref={containerRef} style={{
+        width: '100%',
+        marginBottom: '20px',
+        backgroundColor: '#1a1a1a',
+        borderRadius: '5px',
+        boxShadow: '0 4px 10px rgba(0, 0, 0, 0.3)',
+        position: 'relative',
+        height: '560px',
+        overflow: 'visible'
+      }}>
+        {/* Loading spinner overlay */}
+        {loading && (
+          <div id="spectrogram-loading" className="loading-container">
+            <div className="simple-spinner"></div>
+            <div className="loading-text">Loading Audio...</div>
+          </div>
+        )}
+        
+        {/* Message when no audio is loaded */}
+        {!loading && !isAudioLoaded && (
+          <div style={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            textAlign: 'center',
+            color: '#6c757d'
+          }}>
+            <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>
+              <i className="fas fa-music"></i>
+            </div>
+            <h3>No Audio Loaded</h3>
+            <p>Upload an audio file to visualize the waveform and spectrogram.</p>
+          </div>
+        )}
+      </div>
+      
+      {/* Minimap for navigation - separate container */}
+      <div id="minimap" ref={minimapRef}></div>
+      
+      {/* Display current time (optional) */}
+      {isReady && isAudioLoaded && (
+        <div className="current-time" style={{ textAlign: 'center', marginBottom: '10px' }}>
+          Time: {formatTime(currentTime)} / {formatTime(wavesurfer?.getDuration() || 0)}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Helper function to format time in MM:SS
+const formatTime = (seconds) => {
+  if (!seconds && seconds !== 0) return '--:--';
+  const min = Math.floor(seconds / 60);
+  const sec = Math.floor(seconds % 60);
+  return `${min.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
+};
+
+export default WaveSurferComponent;
+
+================================================================================
+File: src/index.js
+================================================================================
+
+/**
+ * File: src/index.js
+ * Description: Application entry point
+ * 
+ * Version History:
+ * v1.0.0 (2025-05-18) - Initial implementation
+ * v1.0.1 (2025-05-19) - Added error handling and version logging
+ * v1.0.2 (2025-05-19) - Fixed ESLint warning about unused import
+ */
+
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import App from './App';
+
+// Add global error handler to catch unhandled errors
+window.addEventListener('error', (event) => {
+  console.error('Uncaught runtime error:', event.error);
+});
+
+// Log the React version to verify
+console.log("React version:", React.version);
+
+// Create root and render app
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(<App />);

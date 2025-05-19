@@ -1,0 +1,47 @@
+<!-- 
+  File: public/index.html 
+  Description: HTML entry point for the React application
+  
+  Version History:
+  v1.0.0 (2025-05-18) - Initial implementation
+  v1.0.1 (2025-05-18) - Added WaveSurfer scripts directly in HTML
+-->
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#000000" />
+    <meta
+      name="description"
+      content="WaveSurfer with Regions - React Implementation"
+    />
+    <title>WaveSurfer with Regions</title>
+
+    <!-- Font Awesome for icons -->
+    <link
+      rel="stylesheet"
+      href="https://use.fontawesome.com/releases/v5.15.4/css/all.css"
+      integrity="sha384-DyZ88mC6Up2uqS4h/KRgHuoeGwBcD4Ng9SiP4dIRy0EXTlnuz47vAwmeGwVChigm"
+      crossorigin="anonymous"
+    />
+
+    <!-- WaveSurfer and plugins -->
+    <script src="https://cdn.jsdelivr.net/npm/wavesurfer.js@7.9.4/dist/wavesurfer.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/wavesurfer.js@7.9.4/dist/plugins/spectrogram.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/wavesurfer.js@7.9.4/dist/plugins/timeline.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/wavesurfer.js@7.9.4/dist/plugins/hover.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/wavesurfer.js@7.9.4/dist/plugins/minimap.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/wavesurfer.js@7.9.4/dist/plugins/regions.min.js"></script>
+  </head>
+  <body>
+    <noscript>You need to enable JavaScript to run this app.</noscript>
+    <div id="root"></div>
+    <!--
+      This HTML file is a template.
+      The React app will be mounted to the div with id="root".
+    -->
+  </body>
+</html>

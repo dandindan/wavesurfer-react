@@ -1,0 +1,329 @@
+/**
+ * File: src/assets/styles/main.css
+ * Description: Main application styling
+ * 
+ * Version History:
+ * v1.0.0 (2025-05-18) - Initial implementation based on original HTML
+ * v1.0.1 (2025-05-19) - Fixed corrupted CSS rule for waveform container
+ * v1.0.2 (2025-05-19) - Updated container widths to 95% and fixed background colors
+ */
+
+body {
+  background-color: #212529;
+  color: #f8f9fa;
+  font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  margin: 0;
+  padding: 20px;
+}
+
+.container {
+  max-width: 1200px; /* Slightly wider container */
+  margin: 0 auto;
+}
+
+h1 {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+/* Card styling */
+.card {
+  background-color: #1a1a1a;
+  border-radius: 5px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+  margin-bottom: 20px;
+}
+
+.card-body {
+  padding: 20px;
+}
+
+/* Single container for waveform, spectrogram and timeline */
+#waveform-container {
+  width: 95% !important; /* Force 95% width */
+  margin: 0 auto 20px auto !important; /* Center the container */
+  background-color: #1a1a1a;
+  border-radius: 5px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+  position: relative;
+  /* Default height will include both waveform, spectrogram and timeline */
+  height: 560px;
+  /* Makes sure content is visible */
+  overflow: visible !important;
+}
+
+/* Only keep minimap separate */
+#minimap {
+  width: 95% !important; /* Force 95% width */
+  height: 40px;
+  margin: 0 auto 20px auto !important; /* Center the minimap */
+  background-color: #1a1a1a;
+  border-radius: 5px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+}
+
+/* Controls row */
+.controls-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  width: 95%; /* Match waveform width */
+  max-width: 1200px;
+  margin: 20px auto;
+  padding: 15px;
+  background-color: #1d1919;
+  border-radius: 25px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+.slider-container {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 250px;
+  margin: 0 10px;
+}
+
+.slider-label {
+  margin-right: 5px;
+  min-width: 45px;
+  white-space: nowrap;
+  color: #adb5bd;
+}
+
+.slider-value {
+  min-width: 35px;
+  text-align: right;
+  color: #0dcaf0;
+}
+
+input[type='range'] {
+  flex-grow: 1;
+  margin: 0 5px;
+  height: 8px;
+  border-radius: 4px;
+  background: #555555;
+  outline: none;
+}
+
+input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #4363ca;
+  cursor: pointer;
+}
+
+input[type='range']::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #4363ca;
+  cursor: pointer;
+}
+
+.checkbox-container {
+  display: flex;
+  align-items: center;
+  margin: 0 10px;
+  min-width: 120px;
+}
+
+/* Player control buttons */
+.controls {
+  display: flex;
+  justify-content: center;
+  margin: 20px 0;
+  flex-wrap: wrap;
+  width: 95%; /* Match waveform width */
+  margin: 20px auto;
+}
+
+button {
+  background-color: #4363ca;
+  color: #ffffff;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 5px;
+  margin: 5px 10px;
+  cursor: pointer;
+}
+
+button:hover {
+  background-color: #357ea8;
+}
+
+button.danger {
+  background-color: #dc3545;
+}
+
+button.danger:hover {
+  background-color: #c82333;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Loading container */
+.loading-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  background-color: rgba(26, 26, 26, 0.8);
+  z-index: 10;
+  border-radius: 5px;
+}
+
+.simple-spinner {
+  width: 40px;
+  height: 40px;
+  margin-bottom: 20px;
+  border: 4px solid rgba(13, 202, 240, 0.2);
+  border-top: 4px solid #0dcaf0;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+.loading-text {
+  color: #f8f9fa;
+  font-size: 1.2rem;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* Status styling */
+.status {
+  text-align: center;
+  padding: 10px;
+  margin: 10px 0;
+  background-color: #222;
+  border-radius: 5px;
+  width: 95%; /* Match waveform width */
+  margin: 10px auto;
+}
+
+.text-info {
+  color: #0dcaf0 !important;
+}
+
+.text-success {
+  color: #28a745 !important;
+}
+
+.text-warning {
+  color: #ffc107 !important;
+}
+
+.text-danger {
+  color: #dc3545 !important;
+}
+
+.fw-bold {
+  font-weight: bold !important;
+}
+
+/* Alert message styling */
+.alert {
+  padding: 12px 16px;
+  margin-top: 15px;
+  border-radius: 8px;
+  text-align: center;
+  animation: fadeIn 0.3s ease-in;
+  width: 95%; /* Match waveform width */
+  margin: 15px auto;
+}
+
+.alert-info {
+  background-color: rgba(13, 202, 240, 0.15);
+  color: #0dcaf0;
+}
+
+.alert-success {
+  background-color: rgba(40, 167, 69, 0.15);
+  color: #28a745;
+}
+
+.alert-warning {
+  background-color: rgba(255, 193, 7, 0.15);
+  color: #ffc107;
+}
+
+.alert-danger {
+  background-color: rgba(220, 53, 69, 0.15);
+  color: #dc3545;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Utility classes */
+.mb-4 {
+  margin-bottom: 1.5rem !important;
+}
+
+.m-0 {
+  margin: 0 !important;
+}
+
+.me-2 {
+  margin-right: 0.5rem !important;
+}
+
+/* Current time display */
+.current-time {
+  text-align: center;
+  margin-bottom: 10px;
+  width: 95%; /* Match waveform width */
+  margin: 0 auto 10px auto;
+  color: #0dcaf0;
+  font-weight: bold;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  #waveform-container {
+    height: 400px;
+  }
+
+  .slider-container {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .slider-label {
+    margin-bottom: 5px;
+  }
+
+  .controls-row {
+    flex-direction: column;
+  }
+
+  .checkbox-container {
+    margin: 10px 0;
+  }
+}
