@@ -5,7 +5,7 @@
  * Version History:
  * v1.0.0 (2025-05-18) - Initial implementation based on original HTML
  * v1.0.1 (2025-05-19) - Updated to use @wavesurfer/react
- * v1.0.2 (2025-05-19) - Fixed layout and status display
+ * v1.0.2 (2025-05-19) - Removed loop regions checkbox, set loopRegions to true
  */
 
 import React, { useState, useRef, useEffect } from 'react';
@@ -22,8 +22,8 @@ function App() {
   const [isReady, setIsReady] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(100);
   const [playbackSpeed, setPlaybackSpeed] = useState(1.0);
-  const [loopRegions, setLoopRegions] = useState(true);
-  const [dragSelection, setDragSelection] = useState(true);
+  // Set loopRegions to true - regions will always loop
+  const loopRegions = true;
   const [status, setStatus] = useState({ text: "No audio loaded", type: "info" });
   const [alert, setAlert] = useState({ message: "", isOpen: false, type: "info" });
   
@@ -81,19 +81,38 @@ function App() {
   
   // Handler for clear regions
   const handleClearRegions = () => {
-    if (wavesurferRef.current) {
-      try {
-        // Find regions plugin in the active plugins
-        const regionsPlugin = wavesurferRef.current.getActivePlugins().find(plugin => plugin.name === 'regions');
+    if (!wavesurferRef.current) {
+      console.error("WaveSurfer instance not available");
+      setAlert({ message: "Cannot clear regions: Player not initialized", isOpen: true, type: "danger" });
+      return;
+    }
+    
+    try {
+      console.log("Attempting to clear regions...");
+      
+      // Try direct access to regions plugin
+      if (wavesurferRef.current.regions) {
+        console.log("Found regions plugin:", wavesurferRef.current.regions);
+        wavesurferRef.current.regions.clearRegions();
+        setAlert({ message: "All regions cleared", isOpen: true, type: "success" });
+      } else {
+        // Try to find the regions plugin in active plugins
+        const regionsPlugin = wavesurferRef.current.getActivePlugins().find(
+          plugin => plugin.name === 'regions' || plugin.params?.name === 'regions'
+        );
+        
         if (regionsPlugin) {
+          console.log("Found regions plugin:", regionsPlugin);
           regionsPlugin.clearRegions();
-          setAlert({ message: "All regions cleared", isOpen: true, type: "warning" });
+          setAlert({ message: "All regions cleared", isOpen: true, type: "success" });
         } else {
-          console.warn("Regions plugin not found");
+          console.error("Regions plugin not found");
+          setAlert({ message: "Could not clear regions", isOpen: true, type: "danger" });
         }
-      } catch (error) {
-        console.error("Error clearing regions:", error);
       }
+    } catch (error) {
+      console.error("Error clearing regions:", error);
+      setAlert({ message: "Error clearing regions", isOpen: true, type: "danger" });
     }
   };
   
@@ -120,7 +139,6 @@ function App() {
         audioFile={audioFile}
         isPlaying={isPlaying}
         loopRegions={loopRegions}
-        dragSelection={dragSelection}
         zoomLevel={zoomLevel}
         playbackSpeed={playbackSpeed}
         onPlayPause={handlePlayPause}
@@ -156,28 +174,6 @@ function App() {
             onChange={(e) => setPlaybackSpeed(Number(e.target.value))}
           />
           <span id="speed-value" className="slider-value">{playbackSpeed.toFixed(1)}x</span>
-        </div>
-
-        {/* Region looping control */}
-        <div className="checkbox-container">
-          <input 
-            type="checkbox" 
-            id="loop-regions" 
-            checked={loopRegions}
-            onChange={(e) => setLoopRegions(e.target.checked)}
-          />
-          <label htmlFor="loop-regions">Loop regions</label>
-        </div>
-        
-        {/* Drag selection control */}
-        <div className="checkbox-container">
-          <input 
-            type="checkbox" 
-            id="drag-selection" 
-            checked={dragSelection}
-            onChange={(e) => setDragSelection(e.target.checked)}
-          />
-          <label htmlFor="drag-selection">Enable drag</label>
         </div>
       </div>
       
