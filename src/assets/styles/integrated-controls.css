@@ -1,0 +1,280 @@
+/**
+ * File: src/assets/styles/integrated-controls.css
+ * Description: CSS for the integrated controls row
+ * 
+ * Version History:
+ * v1.0.0 (2025-05-19) - Initial implementation
+ */
+
+.all-controls {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 1000px;
+  margin: 20px auto;
+}
+
+/* Combined controls row with all controls in one line */
+.controls-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 15px;
+  background-color: #1d1919;
+  border-radius: 25px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  margin-bottom: 15px;
+}
+
+.slider-container {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 200px;
+  margin: 0 10px;
+}
+
+.slider-label {
+  margin-right: 5px;
+  min-width: 45px;
+  white-space: nowrap;
+  color: #adb5bd;
+}
+
+.slider-value {
+  min-width: 35px;
+  text-align: right;
+  color: #0dcaf0;
+}
+
+input[type='range'] {
+  flex-grow: 1;
+  margin: 0 5px;
+  height: 8px;
+  border-radius: 4px;
+  background: #555555;
+  outline: none;
+}
+
+input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #4363ca;
+  cursor: pointer;
+}
+
+input[type='range']::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #4363ca;
+  cursor: pointer;
+}
+
+/* Main controls container */
+.main-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  width: 100%;
+  background-color: #1d1919;
+  border-radius: 25px;
+  padding: 15px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+/* Player buttons */
+.player-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  margin-right: 20px;
+}
+
+.player-buttons button {
+  background-color: #4363ca;
+  color: #ffffff;
+  padding: 8px 15px;
+  border: none;
+  border-radius: 5px;
+  margin: 0 5px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.player-buttons button:hover {
+  background-color: #357ea8;
+}
+
+.player-buttons button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.player-buttons button.danger {
+  background-color: #dc3545;
+}
+
+.player-buttons button.danger:hover {
+  background-color: #c82333;
+}
+
+/* VLC controls */
+.vlc-section {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  margin-left: 20px;
+  border-left: 1px solid #333;
+  padding-left: 20px;
+}
+
+/* VLC button styles */
+.vlc-controls button {
+  background-color: transparent;
+  color: #f8f9fa;
+  border: none;
+  padding: 8px 12px;
+  margin: 0 5px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.vlc-controls button:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #0dcaf0;
+}
+
+.vlc-controls button i {
+  font-size: 1.2rem;
+}
+
+.vlc-launch {
+  background-color: #dc3545 !important;
+  color: #ffffff !important;
+  padding: 8px 15px;
+  border: none;
+  border-radius: 5px;
+  margin-right: 15px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.vlc-launch:hover {
+  background-color: #c82333 !important;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.vlc-launch:disabled {
+  background-color: #6c757d !important;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.vlc-status {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+}
+
+.status-label {
+  color: #6c757d;
+  margin-right: 8px;
+}
+
+.status-value {
+  font-weight: bold;
+}
+
+.status-value.playing {
+  color: #28a745;
+}
+
+.status-value.paused {
+  color: #ffc107;
+}
+
+/* Alert message */
+.alert {
+  padding: 12px 16px;
+  margin-top: 15px;
+  border-radius: 8px;
+  text-align: center;
+  animation: fadeIn 0.3s ease-in;
+}
+
+.alert-info {
+  background-color: rgba(13, 202, 240, 0.15);
+  color: #0dcaf0;
+}
+
+.alert-success {
+  background-color: rgba(40, 167, 69, 0.15);
+  color: #28a745;
+}
+
+.alert-warning {
+  background-color: rgba(255, 193, 7, 0.15);
+  color: #ffc107;
+}
+
+.alert-danger {
+  background-color: rgba(220, 53, 69, 0.15);
+  color: #dc3545;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .main-controls {
+    flex-direction: column;
+  }
+
+  .player-buttons,
+  .vlc-section {
+    width: 100%;
+    margin: 10px 0;
+    padding: 0;
+    border-left: none;
+  }
+
+  .vlc-section {
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid #333;
+  }
+
+  .slider-container {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .slider-label {
+    margin-bottom: 5px;
+  }
+
+  .controls-row {
+    flex-direction: column;
+  }
+
+  .vlc-controls {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+}
