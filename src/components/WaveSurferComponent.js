@@ -13,8 +13,7 @@
  * v1.0.7 (2025-05-21) - Fixed duplicate spectrograms and minimaps - Maoz Lahav
  * v1.0.8 (2025-05-21) - Complete rewrite to fix duplicates - Maoz Lahav
  * v1.0.9 (2025-05-21) - Fixed hundreds of timelines issue - Maoz Lahav
- * v1.0.10 (2025-05-21) - Implemented official WaveSurfer regions example with random colors - 
- * v1.0.11 (2025-05-27) - Added mute functionality and click-to-seek for VLC control 
+ * v1.0.10 (2025-05-21) - Implemented official WaveSurfer regions example with random colors - Maoz Lahav
  */
 
 import React, { useRef, useState, useEffect, useCallback } from 'react';

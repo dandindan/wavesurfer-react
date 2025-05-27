@@ -10,7 +10,6 @@
  * v1.0.4 (2025-05-27) - Improved VLC-WaveSurfer synchronization - Maoz Lahav
  * v1.0.5 (2025-05-27) - Fixed file upload error handling and debugging - Maoz Lahav
  * v1.0.6 (2025-05-27) - Complete rewrite with better error handling and debugging - Maoz Lahav
- * v1.0.7 (2025-05-27) - Added direct waveform click-to-seek functionality- Maoz Lahav
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
