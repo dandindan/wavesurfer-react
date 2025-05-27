@@ -9,8 +9,6 @@
  * v1.0.3 (2025-05-19) - Integrated VLC controller with all controls in one row
  * v1.0.4 (2025-05-21) - Fixed infinite update loop in file handling - Maoz Lahav
  * v1.0.5 (2025-05-27) - Fixed VLC file passing - now passes File object instead of blob URL - Maoz Lahav
- * v1.0.6 (2025-05-27) - Added WaveSurfer mute button and improved file handling - Maoz Lahav
- * v1.0.7 (2025-05-27) - Added click-to-seek functionality for VLC control - Maoz Lahav
  */
 
 import React, { useState, useRef, useEffect } from 'react';

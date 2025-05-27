@@ -162,7 +162,7 @@ const WaveSurferComponent = ({
   }, [onRegionActivated, randomColor]);
   
   const handleWaveformClick = useCallback((event) => {
-    console.log("Waveform clicked", event);
+    console.log("Waveform interaction event:", event);
     
     // First check if we have an active region and reset its color
     if (activeRegionRef.current) {
@@ -174,22 +174,66 @@ const WaveSurferComponent = ({
       activeRegionRef.current = null;
     }
     
-    // Get the click position and seek VLC to that position
-    if (wavesurfer && event && typeof event.relativeX === 'number') {
+    // Calculate click position and seek + play both WaveSurfer and VLC
+    if (wavesurfer && event) {
       try {
-        const duration = wavesurfer.getDuration();
-        const clickTime = event.relativeX * duration;
+        let relativeX;
         
-        console.log(`Seeking to time: ${clickTime}s (${event.relativeX * 100}% through audio)`);
-        
-        // Seek VLC if it's connected and available
-        if (wavesurfer.vlc && typeof wavesurfer.vlc.seekTo === 'function') {
-          wavesurfer.vlc.seekTo(clickTime);
-          console.log("VLC seeked to:", clickTime);
+        // Try to get relative position from the event
+        if (typeof event.relativeX === 'number') {
+          relativeX = event.relativeX;
+        } else if (event.originalEvent && event.originalEvent.offsetX && event.originalEvent.target) {
+          // Calculate relative position manually
+          const offsetX = event.originalEvent.offsetX;
+          const containerWidth = event.originalEvent.target.offsetWidth;
+          relativeX = offsetX / containerWidth;
+        } else {
+          console.warn("Could not determine click position");
+          return;
         }
         
-        // Also seek WaveSurfer for visual sync
-        wavesurfer.seekTo(event.relativeX);
+        const duration = wavesurfer.getDuration();
+        const clickTime = relativeX * duration;
+        
+        console.log(`🎯 Click-to-play: ${(relativeX * 100).toFixed(1)}% = ${clickTime.toFixed(2)}s`);
+        
+        // 1. Seek WaveSurfer to clicked position
+        wavesurfer.seekTo(relativeX);
+        console.log("📻 WaveSurfer seeked to:", clickTime.toFixed(2) + "s");
+        
+        // 2. Start WaveSurfer playing
+        if (!wavesurfer.isPlaying()) {
+          wavesurfer.play();
+          console.log("▶️ WaveSurfer started playing");
+          
+          // Update parent component about play state
+          if (onPlayPause) {
+            onPlayPause(true);
+          }
+        }
+        
+        // 3. Seek VLC to the exact same position and start playing
+        if (wavesurfer.vlc && typeof wavesurfer.vlc.seekTo === 'function') {
+          console.log("🎬 Seeking VLC to same position:", clickTime.toFixed(2) + "s");
+          
+          // Seek VLC to exact position
+          wavesurfer.vlc.seekTo(clickTime).then((success) => {
+            if (success) {
+              console.log("✅ VLC seek successful");
+              
+              // Start VLC playing to match WaveSurfer
+              if (wavesurfer.vlc.play) {
+                wavesurfer.vlc.play().then(() => {
+                  console.log("▶️ VLC started playing - synchronized!");
+                });
+              }
+            } else {
+              console.error("❌ VLC seek failed");
+            }
+          });
+        } else {
+          console.log("⚠️ VLC not available for synchronization");
+        }
         
         // Notify parent about the position change
         if (onRegionActivated) {
@@ -202,10 +246,10 @@ const WaveSurferComponent = ({
         }
         
       } catch (error) {
-        console.error("Error handling waveform click:", error);
+        console.error("Error handling synchronized click-to-play:", error);
       }
     }
-  }, [wavesurfer, onRegionActivated]);
+  }, [wavesurfer, onRegionActivated, onPlayPause]);
   
   // CRITICAL: One-time plugin registration when wavesurfer instance changes
   useEffect(() => {
@@ -309,6 +353,76 @@ const WaveSurferComponent = ({
           
           // Reset the active region when the user clicks anywhere in the waveform
           wavesurfer.on('interaction', handleWaveformClick);
+          
+          // CRITICAL: Add direct event listener to the waveform container for VLC sync
+          const waveformContainer = containerRef.current;
+          if (waveformContainer) {
+            const handleDirectWaveformClick = (event) => {
+              console.log("🖱️ Direct container click detected:", event);
+              
+              try {
+                // Calculate relative position from the click
+                const containerRect = waveformContainer.getBoundingClientRect();
+                const clickX = event.clientX - containerRect.left;
+                const relativeX = clickX / containerRect.width;
+                
+                if (relativeX >= 0 && relativeX <= 1) {
+                  const duration = wavesurfer.getDuration();
+                  const clickTime = relativeX * duration;
+                  
+                  console.log(`🎯 Direct click: ${(relativeX * 100).toFixed(1)}% = ${clickTime.toFixed(2)}s`);
+                  
+                  // Force both WaveSurfer and VLC to seek and play
+                  setTimeout(() => {
+                    // 1. Seek WaveSurfer
+                    wavesurfer.seekTo(relativeX);
+                    console.log("📻 WaveSurfer force-seeked to:", clickTime.toFixed(2) + "s");
+                    
+                    // 2. Start WaveSurfer playing if not playing
+                    if (!wavesurfer.isPlaying()) {
+                      wavesurfer.play();
+                      console.log("▶️ WaveSurfer force-started playing");
+                      
+                      // Update parent play state
+                      if (onPlayPause) {
+                        onPlayPause(true);
+                      }
+                    }
+                    
+                    // 3. Force VLC synchronization
+                    if (wavesurfer.vlc && typeof wavesurfer.vlc.seekTo === 'function') {
+                      console.log("🎬 Force-syncing VLC to:", clickTime.toFixed(2) + "s");
+                      
+                      wavesurfer.vlc.seekTo(clickTime).then((success) => {
+                        if (success) {
+                          console.log("✅ VLC force-seek successful");
+                          
+                          // Force VLC to start playing
+                          if (wavesurfer.vlc.play) {
+                            wavesurfer.vlc.play().then(() => {
+                              console.log("▶️ VLC force-started playing - SYNCHRONIZED!");
+                            });
+                          }
+                        } else {
+                          console.error("❌ VLC force-seek failed");
+                        }
+                      });
+                    }
+                  }, 50); // Small delay to ensure proper execution order
+                }
+              } catch (error) {
+                console.error("Error in direct click handler:", error);
+              }
+            };
+            
+            // Add click listener to the waveform container
+            waveformContainer.addEventListener('click', handleDirectWaveformClick);
+            
+            // Store cleanup function
+            cleanupFunctionsRef.current.push(() => {
+              waveformContainer.removeEventListener('click', handleDirectWaveformClick);
+            });
+          }
           
           // Set up helper methods on wavesurfer instance
           wavesurfer.regions = regionsPlugin;

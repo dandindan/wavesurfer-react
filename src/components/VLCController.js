@@ -282,15 +282,28 @@ const VLCController = ({
 
   // Seek to absolute position (in seconds)
   const seekToPosition = useCallback(async (timeInSeconds) => {
-    if (!vlcConnected) return;
+    if (!vlcConnected) {
+      updateDebugInfo("❌ Cannot seek - VLC not connected");
+      return false;
+    }
     
     try {
-      updateDebugInfo(`Seeking VLC to: ${timeInSeconds} seconds`);
-      await sendVLCCommand(`seek ${Math.floor(timeInSeconds)}`);
-      setVlcCurrentTime(timeInSeconds);
-      return true;
+      updateDebugInfo(`🎯 VLC seeking to: ${timeInSeconds.toFixed(2)} seconds`);
+      
+      // Use VLC's seek command - format: seek <seconds>
+      const seekCommand = `seek ${Math.floor(timeInSeconds)}`;
+      const result = await sendVLCCommand(seekCommand);
+      
+      if (result !== null) {
+        setVlcCurrentTime(timeInSeconds);
+        updateDebugInfo(`✅ VLC seek SUCCESS to: ${timeInSeconds.toFixed(2)}s`);
+        return true;
+      } else {
+        updateDebugInfo("❌ VLC seek FAILED - no response from server");
+        return false;
+      }
     } catch (error) {
-      updateDebugInfo(`Seek to position error: ${error.message}`);
+      updateDebugInfo(`❌ VLC seek ERROR: ${error.message}`);
       return false;
     }
   }, [vlcConnected, sendVLCCommand, updateDebugInfo]);
@@ -430,28 +443,45 @@ const VLCController = ({
   // Create VLC control methods for wavesurfer instance
   useEffect(() => {
     if (vlcConnected && wavesurferInstance) {
+      updateDebugInfo("🔗 Attaching synchronized VLC controls to WaveSurfer");
+      
       // Attach methods to the wavesurfer instance for direct control
       wavesurferInstance.vlc = {
-        seekTo: seekToPosition,
+        seekTo: async (timeInSeconds) => {
+          updateDebugInfo(`🎬 VLC seek requested: ${timeInSeconds.toFixed(2)}s`);
+          return await seekToPosition(timeInSeconds);
+        },
         play: async () => {
+          updateDebugInfo("▶️ VLC play requested");
           if (!isPlaying) {
             await togglePlayPause();
+            updateDebugInfo("✅ VLC started playing");
             return true;
           }
+          updateDebugInfo("ℹ️ VLC already playing");
           return false;
         },
         pause: async () => {
+          updateDebugInfo("⏸️ VLC pause requested");
           if (isPlaying) {
             await togglePlayPause();
+            updateDebugInfo("✅ VLC paused");
             return true;
           }
+          updateDebugInfo("ℹ️ VLC already paused");
           return false;
         },
-        stop: stopPlayback,
+        stop: async () => {
+          updateDebugInfo("⏹️ VLC stop requested");
+          await stopPlayback();
+          return true;
+        },
         isConnected: () => vlcConnected,
         getCurrentTime: () => vlcCurrentTime,
         playRegion: async (region) => {
           if (!region) return false;
+          
+          updateDebugInfo(`🎵 VLC region play: ${region.start}s - ${region.end}s`);
           
           // First seek to region start
           await seekToPosition(region.start);
@@ -462,34 +492,35 @@ const VLCController = ({
           }
           
           return true;
-        }
-      };
-      
-      // Add event listener for direct waveform clicks (not just regions)
-      const handleDirectClick = (event) => {
-        // Only handle if it's a direct waveform click (not a region click)
-        if (event && typeof event.relativeX === 'number') {
-          try {
-            const duration = wavesurferInstance.getDuration();
-            const clickTime = event.relativeX * duration;
-            
-            updateDebugInfo(`Direct waveform click: seeking VLC to ${clickTime.toFixed(2)}s`);
-            seekToPosition(clickTime);
-          } catch (error) {
-            updateDebugInfo(`Error handling direct click: ${error.message}`);
+        },
+        // Synchronized seek and play method
+        seekAndPlay: async (timeInSeconds) => {
+          updateDebugInfo(`🎯 VLC synchronized seek & play: ${timeInSeconds.toFixed(2)}s`);
+          
+          // First seek
+          const seekSuccess = await seekToPosition(timeInSeconds);
+          if (!seekSuccess) {
+            updateDebugInfo("❌ VLC seek failed, cannot play");
+            return false;
           }
+          
+          // Then start playing
+          if (!isPlaying) {
+            await togglePlayPause();
+            updateDebugInfo("✅ VLC synchronized playback started");
+            return true;
+          }
+          
+          updateDebugInfo("ℹ️ VLC was already playing");
+          return true;
         }
       };
       
-      // Listen for interaction events on the waveform
-      wavesurferInstance.on('interaction', handleDirectClick);
-      
-      // Cleanup function
-      return () => {
-        if (wavesurferInstance) {
-          wavesurferInstance.un('interaction', handleDirectClick);
-        }
-      };
+      updateDebugInfo("🎉 Synchronized VLC controls attached successfully");
+    } else if (wavesurferInstance) {
+      // Remove VLC controls if not connected
+      delete wavesurferInstance.vlc;
+      updateDebugInfo("🔌 VLC controls removed (not connected)");
     }
   }, [vlcConnected, wavesurferInstance, seekToPosition, togglePlayPause, isPlaying, stopPlayback, vlcCurrentTime, updateDebugInfo]);
 
