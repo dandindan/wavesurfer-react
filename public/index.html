@@ -5,6 +5,7 @@
   Version History:
   v1.0.0 (2025-05-18) - Initial implementation
   v1.0.1 (2025-05-18) - Added WaveSurfer scripts directly in HTML
+  v1.0.2 (2025-05-21) - Added WebSocket error suppression - Maoz Lahav
 -->
 
 <!DOCTYPE html>
@@ -35,6 +36,9 @@
     <script src="https://cdn.jsdelivr.net/npm/wavesurfer.js@7.9.4/dist/plugins/hover.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/wavesurfer.js@7.9.4/dist/plugins/minimap.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/wavesurfer.js@7.9.4/dist/plugins/regions.min.js"></script>
+
+    <!-- WebSocket error suppression for development -->
+    <script src="%PUBLIC_URL%/disable-websocket.js"></script>
   </head>
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>

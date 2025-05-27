@@ -4,6 +4,7 @@
  * 
  * Version History:
  * v1.0.0 (2025-05-18) - Initial implementation
+ * v1.0.1 (2025-05-21) - Removed redundant Load Audio button - Maoz Lahav
  */
 
 import React, { useState, useRef } from 'react';
@@ -131,32 +132,11 @@ const UploadPanel = ({ onFileUpload }) => {
           {uploadedFile && (
             <div id="file-info-display" className="text-light font-italic small mt-2">
               <i className="fas fa-check-circle text-success me-2"></i>
-              Uploaded: {uploadedFile.name} ({formatFileSize(uploadedFile.size)}, {getFileTypeDisplay(uploadedFile)})
-            </div>
-          )}
-          
-          {/* Launch button - only show if file is uploaded */}
-          {uploadedFile && (
-            <div className="text-center">
-              <button
-                id="launch-vlc"
-                className="mt-4 launch-btn fw-bold"
-                style={{
-                  fontSize: '1.2rem',
-                  padding: '0.7rem 1.5rem',
-                  borderRadius: '30px',
-                  boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-                  transition: 'all 0.3s ease',
-                  backgroundColor: '#4363ca',
-                  color: 'white',
-                  border: 'none',
-                  cursor: 'pointer',
-                }}
-                onClick={() => onFileUpload(uploadedFile)} // Re-load the same file
-              >
-                <i className="fas fa-play-circle me-2"></i>
-                Load Audio
-              </button>
+              File loaded: {uploadedFile.name} ({formatFileSize(uploadedFile.size)}, {getFileTypeDisplay(uploadedFile)})
+              <div className="text-info small mt-1">
+                <i className="fas fa-info-circle me-1"></i>
+                Waveform and spectrogram are now visible below. You can create regions by dragging on the waveform.
+              </div>
             </div>
           )}
         </div>

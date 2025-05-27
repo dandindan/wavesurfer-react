@@ -8,6 +8,13 @@
  * v1.0.2 (2025-05-19) - Fixed infinite update loop and duplicate plugins
  * v1.0.3 (2025-05-19) - Fixed zoom error, region looping and drag selection issues
  * v1.0.4 (2025-05-19) - Fixed region functionality and event handlers
+ * v1.0.5 (2025-05-21) - Fixed maximum update depth exceeded warnings - Maoz Lahav
+ * v1.0.6 (2025-05-21) - Fixed multiple spectrogram rendering issue - Maoz Lahav
+ * v1.0.7 (2025-05-21) - Fixed duplicate spectrograms and minimaps - Maoz Lahav
+ * v1.0.8 (2025-05-21) - Complete rewrite to fix duplicates - Maoz Lahav
+ * v1.0.9 (2025-05-21) - Fixed hundreds of timelines issue - Maoz Lahav
+ * v1.0.10 (2025-05-21) - Implemented official WaveSurfer regions example with random colors - 
+ * v1.0.11 (2025-05-27) - Added mute functionality and click-to-seek for VLC control 
  */
 
 import React, { useRef, useState, useEffect, useCallback } from 'react';
@@ -18,56 +25,78 @@ const WaveSurferComponent = ({
   audioFile, 
   isPlaying, 
   loopRegions,
-  dragSelection, // Still accept this prop for backward compatibility
+  dragSelection, 
   zoomLevel,
   playbackSpeed,
+  isMuted,
   onPlayPause, 
-  onReady
+  onReady,
+  onRegionActivated
 }) => {
   // Refs
   const containerRef = useRef(null);
   const minimapRef = useRef(null);
-  const pluginsInitializedRef = useRef(false);
   const regionsPluginRef = useRef(null);
   const activeRegionRef = useRef(null);
+  const lastZoomLevelRef = useRef(zoomLevel);
+  const lastPlaybackSpeedRef = useRef(playbackSpeed);
+  const currentAudioFileRef = useRef(null);
+  const wavesurferInstanceRef = useRef(null);
+  const pluginsRegisteredRef = useRef(false);
   
-  // State
+  // State 
   const [loading, setLoading] = useState(true);
   const [isAudioLoaded, setIsAudioLoaded] = useState(false);
   const [audioUrl, setAudioUrl] = useState(null);
   
-  // Show loading spinner immediately when audio file changes
+  // Random color functions from official example
+  const random = useCallback((min, max) => Math.random() * (max - min) + min, []);
+  const randomColor = useCallback(() => `rgba(${random(0, 255)}, ${random(0, 255)}, ${random(0, 255)}, 0.5)`, [random]);
+  
+  // Handle audio file changes
   useEffect(() => {
-    if (audioFile) {
+    const hasFileChanged = currentAudioFileRef.current !== audioFile;
+    
+    if (hasFileChanged) {
+      console.log("Audio file changed:", audioFile ? (audioFile.name || 'URL') : 'null');
+      
+      // Clean up previous URL
+      if (currentAudioFileRef.current && typeof currentAudioFileRef.current === 'string' && currentAudioFileRef.current.startsWith('blob:')) {
+        URL.revokeObjectURL(currentAudioFileRef.current);
+      }
+      
+      // Reset all states and flags
       setLoading(true);
       setIsAudioLoaded(false);
-      // Reset plugins initialized flag when audio changes
-      pluginsInitializedRef.current = false;
-      // Reset active region when audio changes
       activeRegionRef.current = null;
-    }
-  }, [audioFile]);
-  
-  // Convert File to URL if needed
-  useEffect(() => {
-    if (audioFile) {
-      if (audioFile instanceof File) {
-        const url = URL.createObjectURL(audioFile);
-        setAudioUrl(url);
-        
-        // Clean up URL when component unmounts or audio changes
-        return () => {
-          URL.revokeObjectURL(url);
-        };
+      wavesurferInstanceRef.current = null;
+      pluginsRegisteredRef.current = false;
+      
+      // Create new URL or set to null
+      if (audioFile) {
+        if (audioFile instanceof File) {
+          const newUrl = URL.createObjectURL(audioFile);
+          setAudioUrl(newUrl);
+          currentAudioFileRef.current = newUrl;
+        } else {
+          setAudioUrl(audioFile);
+          currentAudioFileRef.current = audioFile;
+        }
       } else {
-        setAudioUrl(audioFile);
+        setAudioUrl(null);
+        currentAudioFileRef.current = null;
       }
-    } else {
-      setAudioUrl(null);
     }
+    
+    // Cleanup on unmount
+    return () => {
+      if (currentAudioFileRef.current && typeof currentAudioFileRef.current === 'string' && currentAudioFileRef.current.startsWith('blob:')) {
+        URL.revokeObjectURL(currentAudioFileRef.current);
+      }
+    };
   }, [audioFile]);
   
-  // Initialize WaveSurfer with useWavesurfer hook
+  // Initialize WaveSurfer
   const { wavesurfer, currentTime, isReady } = useWavesurfer({
     container: containerRef,
     height: 180,
@@ -75,187 +104,69 @@ const WaveSurferComponent = ({
     progressColor: '#08c3f2',
     cursorColor: '#ff5722',
     cursorWidth: 2,
-    minPxPerSec: 100, // Start with default zoom - will update later
+    minPxPerSec: 100,
     url: audioUrl,
     normalize: true,
     autoScroll: true,
     autoCenter: true,
   });
   
-  // Reset region color handler - won't cause re-renders
-  const resetRegionColors = useCallback(() => {
-    const regionsPlugin = regionsPluginRef.current;
-    if (!regionsPlugin) return;
-    
-    try {
-      const allRegions = regionsPlugin.getRegions();
-      Object.values(allRegions).forEach((region) => {
-        if (region.id !== (activeRegionRef.current?.id)) {
-          region.setOptions({ color: 'rgba(0,0,255,0.4)' });
-        }
-      });
-    } catch (error) {
-      console.error("Error resetting region colors:", error);
-    }
-  }, []);
-  
-  // Handle region in event - won't cause re-renders
+  // Region event handlers - exactly following the official WaveSurfer example
   const handleRegionIn = useCallback((region) => {
-    console.log('region-in', region.id);
+    console.log('region-in', region);
     activeRegionRef.current = region;
-    
-    // Highlight active region
-    try {
-      region.setOptions({ color: 'rgba(0,255,0,0.2)' });
-    } catch (error) {
-      console.error("Error highlighting region:", error);
-    }
   }, []);
   
-  // Handle region out event - won't cause re-renders
   const handleRegionOut = useCallback((region) => {
-    console.log('region-out', region.id);
-    
-    // Only replay if this is the active region and looping is enabled
-    if (region.id === activeRegionRef.current?.id && loopRegions) {
-      try {
-        // Small delay before replaying to prevent stuttering
-        setTimeout(() => {
-          // Check if still active before playing
-          if (region.id === activeRegionRef.current?.id && loopRegions) {
-            region.play();
-          }
-        }, 10);
-      } catch (error) {
-        console.error("Error replaying region:", error);
+    console.log('region-out', region);
+    if (activeRegionRef.current === region) {
+      if (loopRegions) {
+        region.play();
+      } else {
+        activeRegionRef.current = null;
       }
-    } else if (region.id === activeRegionRef.current?.id) {
-      // Reset region color when we leave the region
-      region.setOptions({ color: 'rgba(0,0,255,0.4)' });
-      activeRegionRef.current = null;
     }
   }, [loopRegions]);
   
-  // Handle region click event - won't cause re-renders
   const handleRegionClick = useCallback((region, e) => {
-    console.log('Region clicked!', region);
-    try {
-      e.stopPropagation();
-      
-      // Set as active region
-      activeRegionRef.current = region;
-      
-      // Reset all region colors
-      resetRegionColors();
-      
-      // Set this region to active color
-      region.setOptions({ color: 'rgba(0,255,0,0.2)' });
-      
-      // Play the region
-      region.play();
-      
-      // Update parent component play state
-      if (onPlayPause) {
-        onPlayPause(true);
-      }
-    } catch (error) {
-      console.error("Error handling region click:", error);
-    }
-  }, [resetRegionColors, onPlayPause]);
-  
-  // Handle region update end - called after a region is created or resized
-  const handleRegionUpdateEnd = useCallback((region) => {
-    console.log('region-update-end', region.id);
+    console.log('region-clicked', region);
+    e.stopPropagation(); // prevent triggering a click on the waveform
+    activeRegionRef.current = region;
+    region.play(true); // restart the region
+    region.setOptions({ color: randomColor() }); // give it a new random color like the official example
     
-    // Auto-select the newly created/updated region
+    // Update parent component play state
+    if (onPlayPause) {
+      onPlayPause(true);
+    }
+    
+    // Notify parent component about the active region
+    if (onRegionActivated) {
+      onRegionActivated(region);
+    }
+  }, [onPlayPause, onRegionActivated, randomColor]);
+  
+  const handleRegionUpdated = useCallback((region) => {
+    console.log('region-updated', region);
+    
+    // Auto-select the newly updated region
     activeRegionRef.current = region;
     
-    // Reset all region colors
-    resetRegionColors();
+    // Give it a random color like the official example
+    region.setOptions({ color: randomColor() });
     
-    // Set this region to active color
-    region.setOptions({ color: 'rgba(0,255,0,0.2)' });
-  }, [resetRegionColors]);
+    // Notify parent component about the active region
+    if (onRegionActivated) {
+      onRegionActivated(region);
+    }
+  }, [onRegionActivated, randomColor]);
   
-  // Direct method to create a region programmatically
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const createRegion = useCallback((start, end) => {
-    if (!wavesurfer) {
-      console.error("Cannot create region: wavesurfer not initialized");
-      return null;
-    }
-    
-    // Try different ways to access the regions plugin
-    let regionsPlugin = regionsPluginRef.current;
-    
-    if (!regionsPlugin) {
-      // Try to find the regions plugin from wavesurfer
-      if (wavesurfer.regions) {
-        regionsPlugin = wavesurfer.regions;
-      } else {
-        // Try to find in active plugins
-        const plugins = wavesurfer.getActivePlugins();
-        regionsPlugin = plugins.find(plugin => 
-          plugin.name === 'regions' || 
-          plugin.name === 'Regions' || 
-          (plugin.constructor && plugin.constructor.name === 'RegionsPlugin')
-        );
-      }
-      
-      // Update our ref if we found it
-      if (regionsPlugin) {
-        regionsPluginRef.current = regionsPlugin;
-      } else {
-        console.error("Cannot create region: regions plugin not found");
-        return null;
-      }
-    }
-    
-    try {
-      // Create the region with the specified parameters
-      const region = regionsPlugin.addRegion({
-        start: start,
-        end: end,
-        color: 'rgba(0,0,255,0.4)',
-        drag: true,
-        resize: true
-      });
-      
-      console.log("Region created:", region);
-      return region;
-    } catch (error) {
-      console.error("Failed to create region:", error);
-      
-      // Try alternative method if available
-      try {
-        if (wavesurfer.addRegion) {
-          const region = wavesurfer.addRegion({
-            start: start,
-            end: end,
-            color: 'rgba(0,0,255,0.4)',
-            drag: true,
-            resize: true
-          });
-          console.log("Region created via alternative method:", region);
-          return region;
-        }
-      } catch (altError) {
-        console.error("Failed to create region via alternative method:", altError);
-      }
-      
-      return null;
-    }
-  }, [wavesurfer]);
-
-  // Handle direct waveform click for manual region creation
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   const handleWaveformClick = useCallback((event) => {
     console.log("Waveform clicked", event);
     
-    // First check if we have an active region
+    // First check if we have an active region and reset its color
     if (activeRegionRef.current) {
       try {
-        // Reset the active region color
         activeRegionRef.current.setOptions({ color: 'rgba(0,0,255,0.4)' });
       } catch (error) {
         console.error("Error resetting active region color:", error);
@@ -263,210 +174,226 @@ const WaveSurferComponent = ({
       activeRegionRef.current = null;
     }
     
-    // We don't need to create regions on click with drag selection enabled
-  }, []);
-  
-  // Setup or update regions - this is now only used when manually called
-  const updateRegions = useCallback(() => {
-    const regionsPlugin = regionsPluginRef.current;
-    if (!regionsPlugin || !wavesurfer) return;
-    
-    try {
-      // Clear existing event listeners to prevent duplicates
-      regionsPlugin.un('region-in');
-      regionsPlugin.un('region-out');
-      regionsPlugin.un('region-clicked');
-      regionsPlugin.un('region-update-end');
-      
-      // Add event listeners
-      regionsPlugin.on('region-in', handleRegionIn);
-      regionsPlugin.on('region-out', handleRegionOut);
-      regionsPlugin.on('region-clicked', handleRegionClick);
-      regionsPlugin.on('region-update-end', handleRegionUpdateEnd);
-    } catch (error) {
-      console.error("Error updating regions:", error);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [wavesurfer]);
-  
-  // Initialize plugins manually AFTER wavesurfer is ready
-  useEffect(() => {
-    if (!wavesurfer || !isReady || !minimapRef.current) return;
-    
-    // Only run once per wavesurfer instance
-    if (pluginsInitializedRef.current) {
-      // Just update region settings if necessary
-      updateRegions();
-      return;
-    }
-    
-    console.log("Initializing plugins...");
-    
-    // Import plugins dynamically and initialize
-    const initializePlugins = async () => {
+    // Get the click position and seek VLC to that position
+    if (wavesurfer && event && typeof event.relativeX === 'number') {
       try {
-        // Import plugins
-        const [
-          { default: Timeline },
-          { default: Spectrogram },
-          { default: Regions },
-          { default: Minimap },
-          { default: Hover }
-        ] = await Promise.all([
-          import('wavesurfer.js/dist/plugins/timeline.js'),
-          import('wavesurfer.js/dist/plugins/spectrogram.js'),
-          import('wavesurfer.js/dist/plugins/regions.js'),
-          import('wavesurfer.js/dist/plugins/minimap.js'),
-          import('wavesurfer.js/dist/plugins/hover.js')
-        ]);
+        const duration = wavesurfer.getDuration();
+        const clickTime = event.relativeX * duration;
         
-        // Add Regions first (important for order of operations)
-        console.log("Creating regions plugin with direct options");
-        const regionsPlugin = Regions.create({
-          dragSelection: dragSelection,
-          color: 'rgba(0,0,255,0.4)',
-        });
-        wavesurfer.registerPlugin(regionsPlugin);
+        console.log(`Seeking to time: ${clickTime}s (${event.relativeX * 100}% through audio)`);
         
-        // Store regions plugin reference
-        regionsPluginRef.current = regionsPlugin;
-        
-        // Add Timeline
-        const timelinePlugin = Timeline.create({
-          height: 30,
-          timeInterval: 1,
-          primaryColor: '#ffffff',
-          secondaryColor: '#aaaaaa',
-          primaryFontColor: '#ffffff',
-          secondaryFontColor: '#dddddd',
-        });
-        wavesurfer.registerPlugin(timelinePlugin);
-        
-        // Add Spectrogram
-        const spectrogramPlugin = Spectrogram.create({
-          labels: true,
-          height: 350,
-          splitChannels: false,
-          colorMap: 'roseus',
-          frequencyMax: 8000,
-          frequencyMin: 0,
-          fftSamples: 512,
-          noverlap: 0,
-        });
-        wavesurfer.registerPlugin(spectrogramPlugin);
-        
-        // Add Hover
-        const hoverPlugin = Hover.create({
-          lineColor: '#ff5722',
-          lineWidth: 2,
-          labelBackground: '#111111',
-          labelColor: '#ffffff',
-        });
-        wavesurfer.registerPlugin(hoverPlugin);
-        
-        // Add Minimap
-        const minimapPlugin = Minimap.create({
-          container: minimapRef.current,
-          height: 40,
-          waveColor: '#b8b8b8',
-          progressColor: '#08c3f2',
-        });
-        wavesurfer.registerPlugin(minimapPlugin);
-        
-        // Add waveform click handler
-        wavesurfer.on('interaction', handleWaveformClick);
-        
-        // Setup regions
-        updateRegions();
-        
-        // Mark as initialized
-        pluginsInitializedRef.current = true;
-        
-        // Check if regions plugin was initialized correctly
-        if (regionsPluginRef.current) {
-          console.log("Regions plugin initialized:", regionsPluginRef.current);
-          console.log("Regions plugin API:", Object.keys(regionsPluginRef.current));
-          
-          // Log available methods
-          if (typeof regionsPluginRef.current.enableDragSelection === 'function') {
-            console.log("enableDragSelection is available");
-          } else {
-            console.log("enableDragSelection is NOT available");
-          }
-          
-          if (typeof regionsPluginRef.current.params !== 'undefined') {
-            console.log("Regions plugin params:", regionsPluginRef.current.params);
-          }
-        } else {
-          console.error("Regions plugin was not initialized correctly");
+        // Seek VLC if it's connected and available
+        if (wavesurfer.vlc && typeof wavesurfer.vlc.seekTo === 'function') {
+          wavesurfer.vlc.seekTo(clickTime);
+          console.log("VLC seeked to:", clickTime);
         }
         
-        console.log("Plugins initialized successfully");
-      } catch (error) {
-        console.error("Error initializing plugins:", error);
-      }
-    };
-    
-    initializePlugins();
-    
-    // Cleanup function for when component unmounts
-    return () => {
-      if (wavesurfer) {
-        wavesurfer.un('interaction');
-      }
-    };
-  }, [wavesurfer, isReady, updateRegions, handleWaveformClick]);
-  
-  // Update loading state
-  useEffect(() => {
-    if (isReady) {
-      setLoading(false);
-      setIsAudioLoaded(true);
-      
-      // Make regions accessible on the wavesurfer instance
-      if (wavesurfer && regionsPluginRef.current) {
-        wavesurfer.regions = regionsPluginRef.current;
+        // Also seek WaveSurfer for visual sync
+        wavesurfer.seekTo(event.relativeX);
         
-        // Add a clearAllRegions helper method for easier access
-        wavesurfer.clearAllRegions = () => {
-          try {
-            if (regionsPluginRef.current && typeof regionsPluginRef.current.clearRegions === 'function') {
-              regionsPluginRef.current.clearRegions();
-              return true;
-            }
-            
-            // Alternative: manually clear all regions if clearRegions is not available
-            if (regionsPluginRef.current && typeof regionsPluginRef.current.getRegions === 'function') {
-              const regions = regionsPluginRef.current.getRegions();
-              Object.values(regions).forEach(region => {
-                try {
-                  region.remove();
-                } catch (err) {
-                  console.warn("Error removing region:", err);
-                }
-              });
-              return true;
-            }
-            
-            console.warn("Could not clear regions: method not available");
-            return false;
-          } catch (error) {
-            console.error("Error clearing regions:", error);
-            return false;
-          }
-        };
-      }
-      
-      // Notify parent component that wavesurfer is ready
-      if (onReady) {
-        onReady(wavesurfer);
+        // Notify parent about the position change
+        if (onRegionActivated) {
+          onRegionActivated({
+            start: clickTime,
+            end: clickTime,
+            id: 'click-position',
+            isClickPosition: true
+          });
+        }
+        
+      } catch (error) {
+        console.error("Error handling waveform click:", error);
       }
     }
-  }, [isReady, wavesurfer, onReady]);
+  }, [wavesurfer, onRegionActivated]);
+  
+  // CRITICAL: One-time plugin registration when wavesurfer instance changes
+  useEffect(() => {
+    // Only proceed if we have a valid wavesurfer instance and it's ready
+    if (!wavesurfer || !isReady) return;
+    
+    // Check if this is a new wavesurfer instance
+    const isNewInstance = wavesurferInstanceRef.current !== wavesurfer;
+    
+    // Only register plugins for new instances that haven't been processed
+    if (isNewInstance && !pluginsRegisteredRef.current) {
+      console.log("Registering plugins for new wavesurfer instance...");
+      
+      // Mark this instance as current
+      wavesurferInstanceRef.current = wavesurfer;
+      pluginsRegisteredRef.current = true;
+      
+      // Clear minimap container
+      if (minimapRef.current) {
+        minimapRef.current.innerHTML = '';
+      }
+      
+      const registerPlugins = async () => {
+        try {
+          // Import all plugins
+          const [
+            { default: Timeline },
+            { default: Spectrogram },
+            { default: Regions },
+            { default: Minimap },
+            { default: Hover }
+          ] = await Promise.all([
+            import('wavesurfer.js/dist/plugins/timeline.js'),
+            import('wavesurfer.js/dist/plugins/spectrogram.js'),
+            import('wavesurfer.js/dist/plugins/regions.js'),
+            import('wavesurfer.js/dist/plugins/minimap.js'),
+            import('wavesurfer.js/dist/plugins/hover.js')
+          ]);
+          
+          // Double-check we're still working with the same instance
+          if (wavesurferInstanceRef.current !== wavesurfer) {
+            console.log("Wavesurfer instance changed during plugin import, aborting...");
+            return;
+          }
+          
+          console.log("Creating and registering plugins...");
+          
+          // Create and register each plugin
+          const regionsPlugin = Regions.create();
+          wavesurfer.registerPlugin(regionsPlugin);
+          regionsPluginRef.current = regionsPlugin;
+          
+          const timelinePlugin = Timeline.create({
+            height: 30,
+            timeInterval: 1,
+            primaryColor: '#ffffff',
+            secondaryColor: '#aaaaaa',
+            primaryFontColor: '#ffffff',
+            secondaryFontColor: '#dddddd',
+          });
+          wavesurfer.registerPlugin(timelinePlugin);
+          
+          const spectrogramPlugin = Spectrogram.create({
+            labels: true,
+            height: 350,
+            splitChannels: false,
+            colorMap: 'roseus',
+            frequencyMax: 8000,
+            frequencyMin: 0,
+            fftSamples: 512,
+            noverlap: 0,
+          });
+          wavesurfer.registerPlugin(spectrogramPlugin);
+          
+          const hoverPlugin = Hover.create({
+            lineColor: '#ff5722',
+            lineWidth: 2,
+            labelBackground: '#111111',
+            labelColor: '#ffffff',
+          });
+          wavesurfer.registerPlugin(hoverPlugin);
+          
+          const minimapPlugin = Minimap.create({
+            container: minimapRef.current,
+            height: 40,
+            waveColor: '#b8b8b8',
+            progressColor: '#08c3f2',
+          });
+          wavesurfer.registerPlugin(minimapPlugin);
+          
+          // Enable drag selection - exactly like the official example
+          regionsPlugin.enableDragSelection({
+            color: 'rgba(255, 0, 0, 0.1)',
+          });
+          
+          // Set up event listeners - following the official example pattern exactly
+          regionsPlugin.on('region-in', handleRegionIn);
+          regionsPlugin.on('region-out', handleRegionOut);
+          regionsPlugin.on('region-clicked', handleRegionClick);
+          regionsPlugin.on('region-updated', handleRegionUpdated);
+          
+          // Reset the active region when the user clicks anywhere in the waveform
+          wavesurfer.on('interaction', handleWaveformClick);
+          
+          // Set up helper methods on wavesurfer instance
+          wavesurfer.regions = regionsPlugin;
+          wavesurfer.getActiveRegion = () => activeRegionRef.current;
+          wavesurfer.clearAllRegions = () => {
+            try {
+              if (regionsPlugin && typeof regionsPlugin.clearRegions === 'function') {
+                regionsPlugin.clearRegions();
+                activeRegionRef.current = null; // Reset active region when clearing
+                return true;
+              }
+              return false;
+            } catch (error) {
+              console.error("Error clearing regions:", error);
+              return false;
+            }
+          };
+          
+          // Add method to create regions with random colors like the official example
+          wavesurfer.createRegion = (options = {}) => {
+            try {
+              if (regionsPlugin && typeof regionsPlugin.addRegion === 'function') {
+                const regionOptions = {
+                  color: randomColor(), // Give regions a random color when they are created
+                  drag: true,
+                  resize: true,
+                  ...options
+                };
+                
+                const region = regionsPlugin.addRegion(regionOptions);
+                console.log("Region created with options:", regionOptions);
+                return region;
+              }
+              return null;
+            } catch (error) {
+              console.error("Error creating region:", error);
+              return null;
+            }
+          };
+          
+          console.log("All plugins registered successfully");
+          
+          // Update state
+          setLoading(false);
+          setIsAudioLoaded(true);
+          
+          // Notify parent component
+          if (onReady) {
+            onReady(wavesurfer);
+          }
+          
+        } catch (error) {
+          console.error("Error registering plugins:", error);
+          // Reset flag on error so we can try again
+          pluginsRegisteredRef.current = false;
+        }
+      };
+      
+      // Register plugins with a small delay to ensure DOM is ready
+      setTimeout(registerPlugins, 100);
+    }
+    
+    // Cleanup function
+    return () => {
+      if (wavesurfer && wavesurferInstanceRef.current === wavesurfer) {
+        try {
+          wavesurfer.un('interaction');
+        } catch (error) {
+          console.warn("Error during cleanup:", error);
+        }
+      }
+    };
+    
+  }, [wavesurfer, isReady, handleRegionIn, handleRegionOut, handleRegionClick, handleRegionUpdated, handleWaveformClick, onReady, randomColor]);
+  
+  // Reset plugin flag when audio file changes
+  useEffect(() => {
+    if (audioFile !== currentAudioFileRef.current) {
+      pluginsRegisteredRef.current = false;
+    }
+  }, [audioFile]);
   
   // Update playback status
   useEffect(() => {
-    if (wavesurfer && isReady) {
+    if (wavesurfer && isReady && isAudioLoaded) {
       try {
         const wsIsPlaying = wavesurfer.isPlaying();
         
@@ -479,23 +406,26 @@ const WaveSurferComponent = ({
         console.error("Error updating playback status:", error);
       }
     }
-  }, [isPlaying, wavesurfer, isReady]);
+  }, [isPlaying, wavesurfer, isReady, isAudioLoaded]);
   
-  // Safe zoom function - prevent errors
+  // Safe zoom function
   const safeZoom = useCallback((level) => {
     if (!wavesurfer || !isReady || !isAudioLoaded) return;
     
     try {
       wavesurfer.zoom(level);
     } catch (error) {
-      console.warn("Zoom error - audio may not be fully loaded yet:", error);
+      console.warn("Zoom error:", error);
     }
   }, [wavesurfer, isReady, isAudioLoaded]);
   
-  // Update zoom level - but only after audio is fully loaded
+  // Update zoom level
   useEffect(() => {
-    if (isAudioLoaded && isReady && wavesurfer) {
-      // Use a small timeout to ensure audio is fully processed
+    if (!isAudioLoaded || !isReady || !wavesurfer) return;
+    
+    if (lastZoomLevelRef.current !== zoomLevel) {
+      lastZoomLevelRef.current = zoomLevel;
+      
       const zoomTimer = setTimeout(() => {
         safeZoom(zoomLevel);
       }, 100);
@@ -504,46 +434,13 @@ const WaveSurferComponent = ({
     }
   }, [zoomLevel, isAudioLoaded, isReady, wavesurfer, safeZoom]);
   
-  // Update region options when loopRegions changes
-  useEffect(() => {
-    // Only log the change, don't update any state
-    if (loopRegions) {
-      console.log("Regions looping enabled");
-    } else {
-      console.log("Regions looping disabled");
-    }
-    // No state updates here that could cause re-renders
-  }, [loopRegions]);
-  
-  // Check if regions functionality is working after component is fully mounted
-  useEffect(() => {
-    if (!isAudioLoaded || !isReady || !wavesurfer) return;
-    
-    // Test regions functionality after a short delay
-    const timer = setTimeout(() => {
-      if (regionsPluginRef.current) {
-        console.log("Testing regions functionality...");
-        
-        // Try to enable drag selection explicitly
-        try {
-          if (typeof regionsPluginRef.current.enableDragSelection === 'function') {
-            regionsPluginRef.current.enableDragSelection({
-              color: 'rgba(0,0,255,0.4)'
-            });
-            console.log("Drag selection enabled successfully");
-          }
-        } catch (error) {
-          console.warn("Could not enable drag selection:", error);
-        }
-      }
-    }, 1000);
-    
-    return () => clearTimeout(timer);
-  }, [isAudioLoaded, isReady, wavesurfer]);
-  
   // Update playback speed
   useEffect(() => {
-    if (wavesurfer && isReady && isAudioLoaded && playbackSpeed) {
+    if (!wavesurfer || !isReady || !isAudioLoaded) return;
+    
+    if (lastPlaybackSpeedRef.current !== playbackSpeed) {
+      lastPlaybackSpeedRef.current = playbackSpeed;
+      
       try {
         wavesurfer.setPlaybackRate(playbackSpeed);
       } catch (error) {
@@ -552,15 +449,30 @@ const WaveSurferComponent = ({
     }
   }, [playbackSpeed, wavesurfer, isReady, isAudioLoaded]);
   
+  // Update mute state
+  useEffect(() => {
+    if (!wavesurfer || !isReady || !isAudioLoaded) return;
+    
+    try {
+      if (isMuted) {
+        wavesurfer.setVolume(0);
+        console.log("WaveSurfer muted");
+      } else {
+        wavesurfer.setVolume(1);
+        console.log("WaveSurfer unmuted");
+      }
+    } catch (error) {
+      console.error("Error setting WaveSurfer volume:", error);
+    }
+  }, [isMuted, wavesurfer, isReady, isAudioLoaded]);
+  
   // Play/Pause handler
   const handlePlayPause = useCallback(() => {
     if (wavesurfer && isReady && isAudioLoaded) {
       try {
-        // If an active region is selected, play that region
         if (activeRegionRef.current) {
           activeRegionRef.current.play();
         } else {
-          // Otherwise play/pause the entire track
           wavesurfer.playPause();
         }
         
@@ -573,7 +485,7 @@ const WaveSurferComponent = ({
     }
   }, [wavesurfer, isReady, isAudioLoaded, onPlayPause]);
   
-  // Add global play/pause keyboard shortcut
+  // Keyboard shortcut
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.code === 'Space' && wavesurfer && isReady && isAudioLoaded) {
@@ -629,9 +541,16 @@ const WaveSurferComponent = ({
       </div>
       
       {/* Minimap for navigation - separate container */}
-      <div id="minimap" ref={minimapRef}></div>
+      <div id="minimap" ref={minimapRef} style={{
+        width: '100%',
+        height: '40px',
+        marginBottom: '20px',
+        backgroundColor: '#1a1a1a',
+        borderRadius: '5px',
+        boxShadow: '0 4px 10px rgba(0, 0, 0, 0.3)'
+      }}></div>
       
-      {/* Display current time (optional) */}
+      {/* Display current time */}
       {isReady && isAudioLoaded && (
         <div className="current-time" style={{ textAlign: 'center', marginBottom: '10px' }}>
           Time: {formatTime(currentTime)} / {formatTime(wavesurfer?.getDuration() || 0)}

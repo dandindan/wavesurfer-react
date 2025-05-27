@@ -7,6 +7,10 @@
  * v1.0.1 (2025-05-19) - Optimized for integration in main controls row
  * v1.0.2 (2025-05-19) - Updated to work with backend API for real VLC control
  * v1.0.3 (2025-05-19) - Fixed file upload and path handling
+ * v1.0.4 (2025-05-27) - Improved VLC-WaveSurfer synchronization - Maoz Lahav
+ * v1.0.5 (2025-05-27) - Fixed file upload error handling and debugging - Maoz Lahav
+ * v1.0.6 (2025-05-27) - Complete rewrite with better error handling and debugging - Maoz Lahav
+ * v1.0.7 (2025-05-27) - Added direct waveform click-to-seek functionality- Maoz Lahav
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -17,7 +21,8 @@ const VLCController = ({
   onStatusChange,
   wavesurferInstance,
   activeRegion,
-  onError
+  onError,
+  onRegionPlayback, 
 }) => {
   // State for the VLC controller
   const [isPlaying, setIsPlaying] = useState(false);
@@ -25,92 +30,118 @@ const VLCController = ({
   const [vlcConnected, setVlcConnected] = useState(false);
   const [serverFilePath, setServerFilePath] = useState(null);
   const [uploadInProgress, setUploadInProgress] = useState(false);
+  const [vlcCurrentTime, setVlcCurrentTime] = useState(0);
+  const [debugInfo, setDebugInfo] = useState('');
+  
+  // Function to update debug info
+  const updateDebugInfo = useCallback((message) => {
+    console.log("VLC Debug:", message);
+    setDebugInfo(message);
+  }, []);
   
   // Function to upload file to server
   const uploadFileToServer = useCallback(async (file) => {
-    if (!file) return null;
+    if (!file) {
+      updateDebugInfo("No file provided for upload");
+      return null;
+    }
     
     try {
       setUploadInProgress(true);
+      updateDebugInfo(`Starting upload: ${file.name} (${file.size} bytes, ${file.type})`);
       
       const formData = new FormData();
       formData.append('file', file);
       
-      console.log("Uploading file to server:", file.name);
+      updateDebugInfo("Sending file to server...");
       
       const response = await fetch('/api/upload', {
         method: 'POST',
         body: formData,
       });
       
+      updateDebugInfo(`Upload response: ${response.status} ${response.statusText}`);
+      
       if (!response.ok) {
-        throw new Error(`Upload failed: ${response.statusText}`);
+        const errorText = await response.text();
+        updateDebugInfo(`Upload failed: ${response.status} - ${errorText}`);
+        throw new Error(`Upload failed: ${response.status} - ${errorText}`);
       }
       
       const result = await response.json();
+      updateDebugInfo(`Upload result: ${JSON.stringify(result)}`);
       
       setUploadInProgress(false);
       
       if (result.success) {
-        console.log(`File uploaded to server: ${result.filePath}`);
+        updateDebugInfo(`File uploaded successfully to: ${result.filePath}`);
         return result.filePath;
       } else {
-        throw new Error(result.message);
+        throw new Error(result.message || 'Upload failed');
       }
     } catch (error) {
       setUploadInProgress(false);
-      console.error(`Error uploading file: ${error.message}`);
+      updateDebugInfo(`Upload error: ${error.message}`);
       if (onError) onError(`Error uploading file: ${error.message}`);
       return null;
     }
-  }, [onError]);
+  }, [onError, updateDebugInfo]);
   
   // Effect to upload file to server when mediaFile changes
   useEffect(() => {
+    updateDebugInfo(`MediaFile changed: ${mediaFile ? (mediaFile.name || 'URL') : 'null'}`);
+    
     const uploadFile = async () => {
       if (mediaFile && mediaFile instanceof File) {
-        // Only upload if we don't already have a server path for this file
-        // This prevents re-uploading the same file multiple times
+        updateDebugInfo(`Processing File object: ${mediaFile.name}`);
+        
+        // Create a file identifier to check if we've already uploaded this exact file
         const fileName = mediaFile.name;
         const fileSize = mediaFile.size;
         const fileLastModified = mediaFile.lastModified;
-        
-        // Create a file identifier to check if we've already uploaded this exact file
         const fileIdentifier = `${fileName}-${fileSize}-${fileLastModified}`;
+        
+        // Check cache
         const lastUploadedFile = localStorage.getItem('lastUploadedFile');
         const lastFilePath = localStorage.getItem('lastFilePath');
         
         if (lastUploadedFile === fileIdentifier && lastFilePath) {
-          console.log("Using cached file path for", fileName);
+          updateDebugInfo(`Using cached file path: ${lastFilePath}`);
           setServerFilePath(lastFilePath);
         } else {
+          updateDebugInfo("Uploading new file...");
           const filePath = await uploadFileToServer(mediaFile);
           if (filePath) {
             setServerFilePath(filePath);
             localStorage.setItem('lastUploadedFile', fileIdentifier);
             localStorage.setItem('lastFilePath', filePath);
+            updateDebugInfo(`File path saved: ${filePath}`);
+          } else {
+            updateDebugInfo("Failed to upload file");
+            setServerFilePath(null);
           }
         }
       } else if (mediaFile && typeof mediaFile === 'string') {
-        // If mediaFile is already a server path, use it directly
+        updateDebugInfo(`Processing URL string: ${mediaFile}`);
         setServerFilePath(mediaFile);
       } else {
+        updateDebugInfo("No media file provided");
         setServerFilePath(null);
       }
     };
     
     uploadFile();
-  }, [mediaFile, uploadFileToServer]);
+  }, [mediaFile, uploadFileToServer, updateDebugInfo]);
   
   // Function to send commands to VLC via backend API
   const sendVLCCommand = useCallback(async (command) => {
     try {
       if (!vlcConnected) {
-        console.warn("Trying to send command while VLC is not connected");
+        updateDebugInfo(`Cannot send command "${command}" - VLC not connected`);
         return null;
       }
       
-      console.log(`Sending VLC command: ${command}`);
+      updateDebugInfo(`Sending VLC command: ${command}`);
       
       const response = await fetch('/api/vlc-command', {
         method: 'POST',
@@ -123,6 +154,7 @@ const VLCController = ({
       }
       
       const result = await response.json();
+      updateDebugInfo(`Command result: ${JSON.stringify(result)}`);
       
       if (result.playerState) {
         setIsPlaying(result.playerState.isPlaying);
@@ -130,54 +162,74 @@ const VLCController = ({
       
       return result.response;
     } catch (error) {
-      console.error(`Error sending command: ${error.message}`);
+      updateDebugInfo(`Command error: ${error.message}`);
       if (onError) onError(`Error: ${error.message}`);
       return null;
     }
-  }, [vlcConnected, onError]);
+  }, [vlcConnected, onError, updateDebugInfo]);
 
   // Function to launch VLC
   const launchVLC = useCallback(async () => {
+    updateDebugInfo("Launch VLC button clicked");
+    updateDebugInfo(`Server file path: ${serverFilePath}`);
+    updateDebugInfo(`Upload in progress: ${uploadInProgress}`);
+    
     if (!serverFilePath) {
-      if (onError) onError('Please upload a media file first');
+      const errorMsg = 'No file path available. Please ensure the file is uploaded first.';
+      updateDebugInfo(errorMsg);
+      if (onError) onError(errorMsg);
+      return;
+    }
+
+    if (uploadInProgress) {
+      const errorMsg = 'File upload is still in progress. Please wait.';
+      updateDebugInfo(errorMsg);
+      if (onError) onError(errorMsg);
       return;
     }
 
     try {
-      console.log(`Launching VLC with media path: ${serverFilePath}`);
+      updateDebugInfo(`Attempting to launch VLC with: ${serverFilePath}`);
       
-      // Make API call to backend to launch VLC
+      const requestBody = { mediaPath: serverFilePath };
+      updateDebugInfo(`Request body: ${JSON.stringify(requestBody)}`);
+      
       const response = await fetch('/api/launch-vlc', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mediaPath: serverFilePath })
+        body: JSON.stringify(requestBody)
       });
+
+      updateDebugInfo(`Launch response status: ${response.status} ${response.statusText}`);
 
       if (!response.ok) {
         const errorText = await response.text();
+        updateDebugInfo(`Launch failed: ${response.status} - ${errorText}`);
         throw new Error(`Failed to launch VLC: ${response.statusText} - ${errorText}`);
       }
 
       const result = await response.json();
+      updateDebugInfo(`Launch result: ${JSON.stringify(result)}`);
       
       if (result.success) {
         setVlcConnected(true);
         setStatus('Ready');
         setIsPlaying(false);
+        updateDebugInfo("VLC launched successfully");
         
         // Notify parent component
         if (onStatusChange) {
           onStatusChange({ isPlaying: false });
         }
       } else {
-        throw new Error(result.message);
+        throw new Error(result.message || 'Unknown error launching VLC');
       }
     } catch (error) {
-      console.error(`Error launching VLC: ${error.message}`);
+      updateDebugInfo(`Launch error: ${error.message}`);
       if (onError) onError(`Error launching VLC: ${error.message}`);
       setStatus('Error');
     }
-  }, [serverFilePath, onStatusChange, onError]);
+  }, [serverFilePath, uploadInProgress, onStatusChange, onError, updateDebugInfo]);
 
   // Play/Pause toggle
   const togglePlayPause = useCallback(async () => {
@@ -193,16 +245,15 @@ const VLCController = ({
         onStatusChange({ isPlaying: newPlayingState });
       }
     } catch (error) {
-      console.error(`Error toggling play/pause: ${error.message}`);
+      updateDebugInfo(`Play/pause error: ${error.message}`);
     }
-  }, [vlcConnected, isPlaying, sendVLCCommand, onStatusChange]);
+  }, [vlcConnected, isPlaying, sendVLCCommand, onStatusChange, updateDebugInfo]);
 
   // Stop playback
   const stopPlayback = useCallback(async () => {
     if (!vlcConnected) return;
     
     try {
-      // First pause then seek to beginning
       await sendVLCCommand('pause');
       await sendVLCCommand('seek 0');
       setIsPlaying(false);
@@ -213,9 +264,9 @@ const VLCController = ({
         onStatusChange({ isPlaying: false });
       }
     } catch (error) {
-      console.error(`Error stopping playback: ${error.message}`);
+      updateDebugInfo(`Stop error: ${error.message}`);
     }
-  }, [vlcConnected, sendVLCCommand, onStatusChange]);
+  }, [vlcConnected, sendVLCCommand, onStatusChange, updateDebugInfo]);
 
   // Seek backward/forward
   const seekMedia = useCallback(async (seconds) => {
@@ -225,9 +276,24 @@ const VLCController = ({
       const command = `seek ${seconds > 0 ? '+' : ''}${seconds}`;
       await sendVLCCommand(command);
     } catch (error) {
-      console.error(`Error seeking media: ${error.message}`);
+      updateDebugInfo(`Seek error: ${error.message}`);
     }
-  }, [vlcConnected, sendVLCCommand]);
+  }, [vlcConnected, sendVLCCommand, updateDebugInfo]);
+
+  // Seek to absolute position (in seconds)
+  const seekToPosition = useCallback(async (timeInSeconds) => {
+    if (!vlcConnected) return;
+    
+    try {
+      updateDebugInfo(`Seeking VLC to: ${timeInSeconds} seconds`);
+      await sendVLCCommand(`seek ${Math.floor(timeInSeconds)}`);
+      setVlcCurrentTime(timeInSeconds);
+      return true;
+    } catch (error) {
+      updateDebugInfo(`Seek to position error: ${error.message}`);
+      return false;
+    }
+  }, [vlcConnected, sendVLCCommand, updateDebugInfo]);
 
   // Volume up/down
   const adjustVolume = useCallback(async (amount) => {
@@ -237,9 +303,9 @@ const VLCController = ({
       const command = amount > 0 ? 'volup 5' : 'voldown 5';
       await sendVLCCommand(command);
     } catch (error) {
-      console.error(`Error adjusting volume: ${error.message}`);
+      updateDebugInfo(`Volume error: ${error.message}`);
     }
-  }, [vlcConnected, sendVLCCommand]);
+  }, [vlcConnected, sendVLCCommand, updateDebugInfo]);
 
   // Toggle fullscreen
   const toggleFullscreen = useCallback(async () => {
@@ -248,23 +314,94 @@ const VLCController = ({
     try {
       await sendVLCCommand('fullscreen');
     } catch (error) {
-      console.error(`Error toggling fullscreen: ${error.message}`);
+      updateDebugInfo(`Fullscreen error: ${error.message}`);
     }
-  }, [vlcConnected, sendVLCCommand]);
+  }, [vlcConnected, sendVLCCommand, updateDebugInfo]);
+
+  // Test server connection
+  const testServerConnection = useCallback(async () => {
+    try {
+      updateDebugInfo("Testing server connection...");
+      const response = await fetch('/ping');
+      if (response.ok) {
+        const result = await response.json();
+        updateDebugInfo(`Server test: ${result.message}`);
+      } else {
+        updateDebugInfo(`Server test failed: ${response.status}`);
+      }
+    } catch (error) {
+      updateDebugInfo(`Server connection error: ${error.message}`);
+    }
+  }, [updateDebugInfo]);
+
+  // Run server test on component mount
+  useEffect(() => {
+    testServerConnection();
+  }, [testServerConnection]);
+
+  // Poll for VLC status (every 2 seconds when connected)
+  useEffect(() => {
+    if (!vlcConnected) return;
+    
+    const getVlcStatus = async () => {
+      try {
+        const response = await fetch('/api/vlc-status');
+        if (response.ok) {
+          const status = await response.json();
+          
+          // Update local state if different from VLC state
+          if (status.isPlaying !== isPlaying) {
+            setIsPlaying(status.isPlaying);
+            
+            // Notify parent component
+            if (onStatusChange) {
+              onStatusChange({ isPlaying: status.isPlaying });
+            }
+            
+            // Update status text
+            setStatus(status.isPlaying ? 'Playing' : 'Paused');
+          }
+        }
+      } catch (error) {
+        // Don't spam console with status errors
+        // updateDebugInfo(`Status poll error: ${error.message}`);
+      }
+    };
+    
+    // Poll for status every 2 seconds
+    const statusInterval = setInterval(getVlcStatus, 2000);
+    
+    return () => {
+      clearInterval(statusInterval);
+    };
+  }, [vlcConnected, isPlaying, onStatusChange]);
 
   // Effect to handle active region changes
   useEffect(() => {
-    if (!vlcConnected || !activeRegion || !wavesurferInstance) return;
+    if (!vlcConnected || !activeRegion) return;
+    
+    // Skip click positions that aren't actual regions
+    if (activeRegion.isClickPosition) {
+      updateDebugInfo(`Ignoring click position: ${activeRegion.start}s`);
+      return;
+    }
     
     const handleRegionPlayback = async () => {
       try {
+        updateDebugInfo(`Playing region: ${activeRegion.id} (${activeRegion.start}s - ${activeRegion.end}s)`);
+        
         // Seek to the region start time
         const startTime = activeRegion.start;
-        await sendVLCCommand(`seek ${Math.floor(startTime)}`);
+        const seekSuccess = await seekToPosition(startTime);
+        
+        if (!seekSuccess) {
+          updateDebugInfo("Failed to seek to region start time");
+          return;
+        }
         
         // Resume playback if paused
         if (!isPlaying) {
-          await sendVLCCommand('pause'); // VLC uses the same command to toggle play/pause
+          await sendVLCCommand('pause'); // VLC uses the same command to toggle
           setIsPlaying(true);
           setStatus('Playing region');
           
@@ -273,13 +410,88 @@ const VLCController = ({
             onStatusChange({ isPlaying: true });
           }
         }
+        
+        // Notify parent component about region playback
+        if (onRegionPlayback) {
+          onRegionPlayback({
+            region: activeRegion,
+            vlcTime: startTime,
+            isPlaying: true
+          });
+        }
       } catch (error) {
-        console.error(`Error handling region playback: ${error.message}`);
+        updateDebugInfo(`Region playback error: ${error.message}`);
       }
     };
     
     handleRegionPlayback();
-  }, [activeRegion, vlcConnected, sendVLCCommand, wavesurferInstance, isPlaying, onStatusChange]);
+  }, [activeRegion, vlcConnected, sendVLCCommand, isPlaying, onStatusChange, seekToPosition, onRegionPlayback, updateDebugInfo]);
+
+  // Create VLC control methods for wavesurfer instance
+  useEffect(() => {
+    if (vlcConnected && wavesurferInstance) {
+      // Attach methods to the wavesurfer instance for direct control
+      wavesurferInstance.vlc = {
+        seekTo: seekToPosition,
+        play: async () => {
+          if (!isPlaying) {
+            await togglePlayPause();
+            return true;
+          }
+          return false;
+        },
+        pause: async () => {
+          if (isPlaying) {
+            await togglePlayPause();
+            return true;
+          }
+          return false;
+        },
+        stop: stopPlayback,
+        isConnected: () => vlcConnected,
+        getCurrentTime: () => vlcCurrentTime,
+        playRegion: async (region) => {
+          if (!region) return false;
+          
+          // First seek to region start
+          await seekToPosition(region.start);
+          
+          // Then play if not already playing
+          if (!isPlaying) {
+            await togglePlayPause();
+          }
+          
+          return true;
+        }
+      };
+      
+      // Add event listener for direct waveform clicks (not just regions)
+      const handleDirectClick = (event) => {
+        // Only handle if it's a direct waveform click (not a region click)
+        if (event && typeof event.relativeX === 'number') {
+          try {
+            const duration = wavesurferInstance.getDuration();
+            const clickTime = event.relativeX * duration;
+            
+            updateDebugInfo(`Direct waveform click: seeking VLC to ${clickTime.toFixed(2)}s`);
+            seekToPosition(clickTime);
+          } catch (error) {
+            updateDebugInfo(`Error handling direct click: ${error.message}`);
+          }
+        }
+      };
+      
+      // Listen for interaction events on the waveform
+      wavesurferInstance.on('interaction', handleDirectClick);
+      
+      // Cleanup function
+      return () => {
+        if (wavesurferInstance) {
+          wavesurferInstance.un('interaction', handleDirectClick);
+        }
+      };
+    }
+  }, [vlcConnected, wavesurferInstance, seekToPosition, togglePlayPause, isPlaying, stopPlayback, vlcCurrentTime, updateDebugInfo]);
 
   // Render VLC controller buttons
   return (
@@ -289,10 +501,27 @@ const VLCController = ({
         className="vlc-launch"
         onClick={launchVLC}
         disabled={!serverFilePath || vlcConnected || uploadInProgress}
-        title="Launch VLC Player"
+        title={
+          uploadInProgress ? "Uploading file..." :
+          !serverFilePath ? "Please upload a file first" :
+          vlcConnected ? "VLC is already running" :
+          "Launch VLC Player"
+        }
       >
-        <i className="fas fa-external-link-alt"></i> VLC {uploadInProgress ? '(Uploading...)' : ''}
+        <i className="fas fa-external-link-alt"></i> 
+        {uploadInProgress ? 'Uploading...' : vlcConnected ? 'Connected' : 'VLC'}
       </button>
+      
+      {/* Server Test Button (for debugging) */}
+      {!vlcConnected && (
+        <button
+          onClick={testServerConnection}
+          title="Test server connection"
+          style={{ marginLeft: '5px', fontSize: '0.8rem', padding: '4px 8px' }}
+        >
+          <i className="fas fa-network-wired"></i> Test
+        </button>
+      )}
       
       {/* Only show playback controls if VLC is connected */}
       {vlcConnected && (
@@ -348,10 +577,15 @@ const VLCController = ({
         </>
       )}
       
-      {/* Status indicator */}
+      {/* Status and debug info */}
       <div className="vlc-status">
         <span className="status-label">VLC:</span>
-        <span className={`status-value ${status.toLowerCase()}`}>{status}</span>
+        <span className={`status-value ${status.toLowerCase().replace(' ', '-')}`}>{status}</span>
+        {debugInfo && (
+          <div style={{ fontSize: '0.7rem', color: '#888', marginTop: '2px', maxWidth: '200px', wordBreak: 'break-word' }}>
+            {debugInfo}
+          </div>
+        )}
       </div>
     </div>
   );

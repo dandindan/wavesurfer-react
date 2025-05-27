@@ -13,7 +13,60 @@
   max-width: 1000px;
   margin: 20px auto;
 }
+/* Mute button specific styling */
+.player-buttons button#toggle-mute {
+  background-color: #28a745; /* Green when unmuted */
+  position: relative;
+}
 
+.player-buttons button#toggle-mute:hover {
+  background-color: #218838;
+}
+
+.player-buttons button#toggle-mute.muted {
+  background-color: #dc3545; /* Red when muted */
+  animation: pulse 2s infinite;
+}
+
+.player-buttons button#toggle-mute.muted:hover {
+  background-color: #c82333;
+}
+
+/* Pulse animation for muted state */
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(220, 53, 69, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(220, 53, 69, 0);
+  }
+}
+
+/* Tooltip enhancement for mute button */
+.player-buttons button#toggle-mute::after {
+  content: attr(title);
+  position: absolute;
+  bottom: 150%;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: #333;
+  color: white;
+  padding: 5px 8px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s;
+  z-index: 1000;
+}
+
+.player-buttons button#toggle-mute:hover::after {
+  opacity: 1;
+}
 /* Combined controls row with all controls in one line */
 .controls-row {
   display: flex;
