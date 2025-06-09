@@ -440,6 +440,96 @@ const WaveSurferComponent = ({
     }
   }, [playbackSpeed, wavesurfer, isReady, isAudioLoaded]);
   
+  // VLC synchronization manager - handles ALL WaveSurfer events
+  const setupVLCSynchronization = useCallback(() => {
+    if (!wavesurfer || !wavesurfer.vlc || !wavesurfer.vlc.isConnected()) return;
+    
+    console.log("🔗 Setting up COMPLETE VLC synchronization");
+    
+    // Sync function to mirror WaveSurfer actions to VLC
+    const syncToVLC = {
+      play: async () => {
+        console.log("🎵 WaveSurfer PLAY → Syncing VLC PLAY");
+        try {
+          await wavesurfer.vlc.play();
+          console.log("✅ VLC play synced");
+        } catch (error) {
+          console.error("❌ VLC play sync failed:", error);
+        }
+      },
+      
+      pause: async () => {
+        console.log("⏸️ WaveSurfer PAUSE → Syncing VLC PAUSE");
+        try {
+          await wavesurfer.vlc.pause();
+          console.log("✅ VLC pause synced");
+        } catch (error) {
+          console.error("❌ VLC pause sync failed:", error);
+        }
+      },
+      
+      seek: async (time) => {
+        console.log(`🎯 WaveSurfer SEEK → Syncing VLC SEEK to ${time.toFixed(2)}s`);
+        try {
+          await wavesurfer.vlc.seekTo(time);
+          console.log("✅ VLC seek synced");
+        } catch (error) {
+          console.error("❌ VLC seek sync failed:", error);
+        }
+      }
+    };
+    
+    // Listen to ALL WaveSurfer events and mirror them to VLC
+    wavesurfer.on('play', syncToVLC.play);
+    wavesurfer.on('pause', syncToVLC.pause);
+    
+    // Handle seek events
+    wavesurfer.on('seeking', (currentTime) => {
+      syncToVLC.seek(currentTime);
+    });
+    
+    wavesurfer.on('timeupdate', (currentTime) => {
+      // Only sync if there's a significant difference to avoid constant syncing
+      if (wavesurfer.vlc.getCurrentTime && Math.abs(currentTime - wavesurfer.vlc.getCurrentTime()) > 0.5) {
+        syncToVLC.seek(currentTime);
+      }
+    });
+    
+    console.log("✅ Complete VLC synchronization active");
+    
+    // Return cleanup function
+    return () => {
+      console.log("🧹 Cleaning up VLC synchronization");
+      wavesurfer.un('play', syncToVLC.play);
+      wavesurfer.un('pause', syncToVLC.pause);
+      wavesurfer.un('seeking', syncToVLC.seek);
+      wavesurfer.un('timeupdate', syncToVLC.seek);
+    };
+  }, [wavesurfer]);
+  
+  // Set up VLC synchronization when VLC becomes available
+  useEffect(() => {
+    if (!wavesurfer || !isReady || !isAudioLoaded) return;
+    
+    // Check if VLC is connected
+    if (wavesurfer.vlc && wavesurfer.vlc.isConnected()) {
+      const cleanup = setupVLCSynchronization();
+      return cleanup;
+    }
+    
+    // If VLC is not connected yet, check periodically
+    const vlcCheckInterval = setInterval(() => {
+      if (wavesurfer.vlc && wavesurfer.vlc.isConnected()) {
+        clearInterval(vlcCheckInterval);
+        setupVLCSynchronization();
+      }
+    }, 1000);
+    
+    return () => {
+      clearInterval(vlcCheckInterval);
+    };
+  }, [wavesurfer, isReady, isAudioLoaded, setupVLCSynchronization]);
+  
   // Update mute state
   useEffect(() => {
     if (!wavesurfer || !isReady || !isAudioLoaded) return;
@@ -457,16 +547,30 @@ const WaveSurferComponent = ({
     }
   }, [isMuted, wavesurfer, isReady, isAudioLoaded]);
   
-  // Play/Pause handler
+  // Enhanced Play/Pause handler with VLC sync
   const handlePlayPause = useCallback(() => {
     if (wavesurfer && isReady && isAudioLoaded) {
       try {
+        console.log("🎵 Play/Pause button clicked");
+        
+        // Handle region playback
         if (activeRegionRef.current) {
+          console.log("🎵 Playing active region");
           activeRegionRef.current.play();
+          
+          // Sync VLC to region
+          if (wavesurfer.vlc && wavesurfer.vlc.isConnected()) {
+            wavesurfer.vlc.seekTo(activeRegionRef.current.start).then(() => {
+              wavesurfer.vlc.play();
+            });
+          }
         } else {
+          // Normal play/pause - WaveSurfer events will auto-sync VLC
+          console.log("🎵 Toggle play/pause");
           wavesurfer.playPause();
         }
         
+        // Update parent component
         if (onPlayPause) {
           onPlayPause(!wavesurfer.isPlaying());
         }
@@ -476,11 +580,12 @@ const WaveSurferComponent = ({
     }
   }, [wavesurfer, isReady, isAudioLoaded, onPlayPause]);
   
-  // Keyboard shortcut
+  // Enhanced keyboard shortcut with VLC sync
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.code === 'Space' && wavesurfer && isReady && isAudioLoaded) {
         e.preventDefault();
+        console.log("⌨️ Spacebar pressed - triggering synchronized play/pause");
         handlePlayPause();
       }
     };
