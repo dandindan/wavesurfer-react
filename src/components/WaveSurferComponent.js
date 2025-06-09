@@ -14,6 +14,7 @@
  * v1.0.8 (2025-05-21) - Complete rewrite to fix duplicates - Maoz Lahav
  * v1.0.9 (2025-05-21) - Fixed hundreds of timelines issue - Maoz Lahav
  * v1.0.10 (2025-05-21) - Implemented official WaveSurfer regions example with random colors - Maoz Lahav
+ * v1.0.11 (2025-06-09) - Added EXACT VLC mirroring for all WaveSurfer interactions - Human Request
  */
 
 import React, { useRef, useState, useEffect, useCallback } from 'react';
@@ -42,15 +43,119 @@ const WaveSurferComponent = ({
   const currentAudioFileRef = useRef(null);
   const wavesurferInstanceRef = useRef(null);
   const pluginsRegisteredRef = useRef(false);
+  // v1.0.11 - Added VLC sync tracking refs for exact mirroring
+  const vlcSyncActiveRef = useRef(false);
+  const lastVlcSyncTimeRef = useRef(0);
+  const vlcSyncIntervalRef = useRef(null);
+  const pendingVlcSeekRef = useRef(null);
   
   // State 
   const [loading, setLoading] = useState(true);
   const [isAudioLoaded, setIsAudioLoaded] = useState(false);
   const [audioUrl, setAudioUrl] = useState(null);
+  // v1.0.11 - Added VLC sync status state
+  const [vlcSyncStatus, setVlcSyncStatus] = useState('disconnected');
   
   // Random color functions from official example
   const random = useCallback((min, max) => Math.random() * (max - min) + min, []);
   const randomColor = useCallback(() => `rgba(${random(0, 255)}, ${random(0, 255)}, ${random(0, 255)}, 0.5)`, [random]);
+  
+  // v1.0.11 - Added comprehensive VLC sync utility functions
+  const vlcSyncUtils = useCallback((wavesurferInstance = null) => {
+    const wsInstance = wavesurferInstance || wavesurfer;
+    if (!wsInstance || !wsInstance.vlc || !wsInstance.vlc.isConnected()) {
+      return null;
+    }
+    
+    return {
+      // Immediate sync to VLC with debouncing
+      syncSeekToVLC: async (timeInSeconds, source = 'unknown') => {
+        if (!vlcSyncActiveRef.current) return false;
+        
+        console.log(`🎯 [${source}] WaveSurfer → VLC EXACT SEEK: ${timeInSeconds.toFixed(3)}s`);
+        
+        // Cancel any pending seek
+        if (pendingVlcSeekRef.current) {
+          clearTimeout(pendingVlcSeekRef.current);
+        }
+        
+        // Debounce rapid seeks (within 50ms)
+        const now = Date.now();
+        if (now - lastVlcSyncTimeRef.current < 50) {
+          pendingVlcSeekRef.current = setTimeout(() => {
+            wavesurfer.vlc.seekTo(timeInSeconds);
+            lastVlcSyncTimeRef.current = Date.now();
+          }, 50);
+          return true;
+        }
+        
+        try {
+          await wsInstance.vlc.seekTo(timeInSeconds);
+          lastVlcSyncTimeRef.current = now;
+          console.log(`✅ [${source}] VLC seek SUCCESS: ${timeInSeconds.toFixed(3)}s`);
+          return true;
+        } catch (error) {
+          console.error(`❌ [${source}] VLC seek FAILED:`, error);
+          return false;
+        }
+      },
+      
+      // Sync play state to VLC
+      syncPlayStateToVLC: async (shouldPlay, source = 'unknown') => {
+        if (!vlcSyncActiveRef.current) return false;
+        
+        console.log(`🎵 [${source}] WaveSurfer → VLC PLAY STATE: ${shouldPlay ? 'PLAY' : 'PAUSE'}`);
+        
+        try {
+          if (shouldPlay) {
+            await wsInstance.vlc.play();
+          } else {
+            await wsInstance.vlc.pause();
+          }
+          console.log(`✅ [${source}] VLC play state synced: ${shouldPlay ? 'PLAYING' : 'PAUSED'}`);
+          return true;
+        } catch (error) {
+          console.error(`❌ [${source}] VLC play state sync FAILED:`, error);
+          return false;
+        }
+      },
+      
+      // Sync region playback to VLC with exact timing
+      syncRegionToVLC: async (region, source = 'unknown') => {
+        if (!vlcSyncActiveRef.current || !region) return false;
+        
+        console.log(`🎵 [${source}] WaveSurfer → VLC REGION PLAY: ${region.start.toFixed(3)}s - ${region.end.toFixed(3)}s`);
+        
+        try {
+          // First seek to region start
+          await wsInstance.vlc.seekTo(region.start);
+          
+          // Then start playing
+          await wsInstance.vlc.play();
+          
+          // Set up region end monitoring if looping is enabled
+          if (loopRegions) {
+            const regionDuration = (region.end - region.start) * 1000; // Convert to ms
+            setTimeout(async () => {
+              try {
+                // Loop back to region start
+                await wsInstance.vlc.seekTo(region.start);
+                console.log(`🔄 [${source}] VLC region loop: back to ${region.start.toFixed(3)}s`);
+              } catch (error) {
+                console.error(`❌ [${source}] VLC region loop FAILED:`, error);
+              }
+            }, regionDuration);
+          }
+          
+          console.log(`✅ [${source}] VLC region playback started`);
+          return true;
+        } catch (error) {
+          console.error(`❌ [${source}] VLC region sync FAILED:`, error);
+          return false;
+        }
+      }
+    };
+  }, [loopRegions]);
   
   // Handle audio file changes
   useEffect(() => {
@@ -70,6 +175,9 @@ const WaveSurferComponent = ({
       activeRegionRef.current = null;
       wavesurferInstanceRef.current = null;
       pluginsRegisteredRef.current = false;
+      // v1.0.11 - Reset VLC sync state on file change
+      vlcSyncActiveRef.current = false;
+      setVlcSyncStatus('disconnected');
       
       // Create new URL or set to null
       if (audioFile) {
@@ -110,22 +218,33 @@ const WaveSurferComponent = ({
     autoCenter: true,
   });
   
-  // Region event handlers - exactly following the official WaveSurfer example
+  // v1.0.11 - Enhanced region event handlers with exact VLC mirroring
   const handleRegionIn = useCallback((region) => {
     console.log('region-in', region);
     activeRegionRef.current = region;
-  }, []);
+    
+    // v1.0.11 - Sync region entry to VLC
+    const syncUtils = vlcSyncUtils(wavesurfer);
+    if (syncUtils) {
+      syncUtils.syncSeekToVLC(region.start, 'region-in');
+    }
+  }, [vlcSyncUtils]);
   
   const handleRegionOut = useCallback((region) => {
     console.log('region-out', region);
     if (activeRegionRef.current === region) {
       if (loopRegions) {
         region.play();
+        // v1.0.11 - Sync region loop to VLC
+        const syncUtils = vlcSyncUtils(wavesurfer);
+        if (syncUtils) {
+          syncUtils.syncRegionToVLC(region, 'region-loop');
+        }
       } else {
         activeRegionRef.current = null;
       }
     }
-  }, [loopRegions]);
+  }, [loopRegions, vlcSyncUtils]);
   
   const handleRegionClick = useCallback((region, e) => {
     console.log('region-clicked', region);
@@ -133,6 +252,12 @@ const WaveSurferComponent = ({
     activeRegionRef.current = region;
     region.play(true); // restart the region
     region.setOptions({ color: randomColor() }); // give it a new random color like the official example
+    
+    // v1.0.11 - Exact VLC sync for region click
+    const syncUtils = vlcSyncUtils(wavesurfer);
+    if (syncUtils) {
+      syncUtils.syncRegionToVLC(region, 'region-click');
+    }
     
     // Update parent component play state
     if (onPlayPause) {
@@ -143,7 +268,7 @@ const WaveSurferComponent = ({
     if (onRegionActivated) {
       onRegionActivated(region);
     }
-  }, [onPlayPause, onRegionActivated, randomColor]);
+  }, [onPlayPause, onRegionActivated, randomColor, vlcSyncUtils]);
   
   const handleRegionUpdated = useCallback((region) => {
     console.log('region-updated', region);
@@ -154,11 +279,18 @@ const WaveSurferComponent = ({
     // Give it a random color like the official example
     region.setOptions({ color: randomColor() });
     
+    // v1.0.11 - Sync region boundary changes to VLC
+    const syncUtils = vlcSyncUtils(wavesurfer);
+    if (syncUtils) {
+      // When region is resized/moved, seek VLC to new start position
+      syncUtils.syncSeekToVLC(region.start, 'region-updated');
+    }
+    
     // Notify parent component about the active region
     if (onRegionActivated) {
       onRegionActivated(region);
     }
-  }, [onRegionActivated, randomColor]);
+  }, [onRegionActivated, randomColor, vlcSyncUtils]);
   
   const handleWaveformClick = useCallback((event) => {
     console.log("🖱️ Waveform clicked:", event);
@@ -173,22 +305,22 @@ const WaveSurferComponent = ({
       activeRegionRef.current = null;
     }
     
-    // Handle VLC synchronization for direct clicks
+    // v1.0.11 - Enhanced VLC synchronization for direct clicks with exact positioning
     if (wavesurfer && event && typeof event.relativeX === 'number') {
       try {
         const duration = wavesurfer.getDuration();
         const clickTime = event.relativeX * duration;
         
-        console.log(`🎯 Click at: ${clickTime.toFixed(2)}s (${(event.relativeX * 100).toFixed(1)}%)`);
+        console.log(`🎯 Click at: ${clickTime.toFixed(3)}s (${(event.relativeX * 100).toFixed(2)}%)`);
         
-        // Seek VLC if available
-        if (wavesurfer.vlc && typeof wavesurfer.vlc.seekTo === 'function') {
-          console.log("🎬 Syncing VLC to clicked position");
-          wavesurfer.vlc.seekTo(clickTime);
+        // v1.0.11 - Immediate exact VLC sync for waveform clicks
+        const syncUtils = vlcSyncUtils(wavesurfer);
+        if (syncUtils) {
+          syncUtils.syncSeekToVLC(clickTime, 'waveform-click');
           
-          // Start VLC playing if WaveSurfer is playing
-          if (wavesurfer.isPlaying() && wavesurfer.vlc.play) {
-            wavesurfer.vlc.play();
+          // v1.0.11 - If WaveSurfer is playing, ensure VLC continues playing
+          if (wavesurfer.isPlaying()) {
+            syncUtils.syncPlayStateToVLC(true, 'waveform-click-play');
           }
         }
         
@@ -196,7 +328,7 @@ const WaveSurferComponent = ({
         console.error("Error syncing VLC on click:", error);
       }
     }
-  }, [wavesurfer]);
+  }, [wavesurfer, vlcSyncUtils]);
   
   // CRITICAL: One-time plugin registration when wavesurfer instance changes
   useEffect(() => {
@@ -301,6 +433,70 @@ const WaveSurferComponent = ({
           // Reset the active region when the user clicks anywhere in the waveform
           wavesurfer.on('interaction', handleWaveformClick);
           
+          // v1.0.11 - Added comprehensive VLC mirroring event listeners
+          // Listen to ALL WaveSurfer events for exact mirroring
+          wavesurfer.on('seeking', (currentTime) => {
+            console.log(`🎯 WaveSurfer SEEKING: ${currentTime.toFixed(3)}s`);
+            const syncUtils = vlcSyncUtils(wavesurfer);
+            if (syncUtils) {
+              syncUtils.syncSeekToVLC(currentTime, 'wavesurfer-seeking');
+            }
+          });
+          
+          wavesurfer.on('timeupdate', (currentTime) => {
+            // v1.0.11 - Continuous time sync (throttled to avoid spam)
+            const syncUtils = vlcSyncUtils(wavesurfer);
+            if (syncUtils && vlcSyncActiveRef.current) {
+              const now = Date.now();
+              if (now - lastVlcSyncTimeRef.current > 500) { // Sync every 500ms during playback
+                syncUtils.syncSeekToVLC(currentTime, 'wavesurfer-timeupdate');
+              }
+            }
+          });
+          
+          wavesurfer.on('play', () => {
+            console.log(`▶️ WaveSurfer PLAY event`);
+            const syncUtils = vlcSyncUtils(wavesurfer);
+            if (syncUtils) {
+              syncUtils.syncPlayStateToVLC(true, 'wavesurfer-play');
+            }
+          });
+          
+          wavesurfer.on('pause', () => {
+            console.log(`⏸️ WaveSurfer PAUSE event`);
+            const syncUtils = vlcSyncUtils(wavesurfer);
+            if (syncUtils) {
+              syncUtils.syncPlayStateToVLC(false, 'wavesurfer-pause');
+            }
+          });
+          
+          // v1.0.11 - Timeline and spectrogram click handling for exact VLC sync
+          timelinePlugin.on && timelinePlugin.on('click', (time) => {
+            console.log(`🕐 Timeline clicked: ${time.toFixed(3)}s`);
+            const syncUtils = vlcSyncUtils(wavesurfer);
+            if (syncUtils) {
+              syncUtils.syncSeekToVLC(time, 'timeline-click');
+            }
+          });
+          
+          // v1.0.11 - Spectrogram interaction for VLC sync
+          spectrogramPlugin.on && spectrogramPlugin.on('click', (frequency, time) => {
+            console.log(`📊 Spectrogram clicked: ${time.toFixed(3)}s at ${frequency.toFixed(1)}Hz`);
+            const syncUtils = vlcSyncUtils(wavesurfer);
+            if (syncUtils) {
+              syncUtils.syncSeekToVLC(time, 'spectrogram-click');
+            }
+          });
+          
+          // v1.0.11 - Minimap interaction for VLC sync
+          minimapPlugin.on && minimapPlugin.on('click', (time) => {
+            console.log(`🗺️ Minimap clicked: ${time.toFixed(3)}s`);
+            const syncUtils = vlcSyncUtils(wavesurfer);
+            if (syncUtils) {
+              syncUtils.syncSeekToVLC(time, 'minimap-click');
+            }
+          });
+          
           // Set up helper methods on wavesurfer instance
           wavesurfer.regions = regionsPlugin;
           wavesurfer.getActiveRegion = () => activeRegionRef.current;
@@ -331,6 +527,13 @@ const WaveSurferComponent = ({
                 
                 const region = regionsPlugin.addRegion(regionOptions);
                 console.log("Region created with options:", regionOptions);
+                
+                // v1.0.11 - Immediately sync new region to VLC
+                const syncUtils = vlcSyncUtils(wavesurfer);
+                if (syncUtils && regionOptions.start !== undefined) {
+                  syncUtils.syncSeekToVLC(regionOptions.start, 'region-created');
+                }
+                
                 return region;
               }
               return null;
@@ -367,13 +570,18 @@ const WaveSurferComponent = ({
       if (wavesurfer && wavesurferInstanceRef.current === wavesurfer) {
         try {
           wavesurfer.un('interaction');
+          // v1.0.11 - Cleanup VLC sync event listeners
+          wavesurfer.un('seeking');
+          wavesurfer.un('timeupdate');
+          wavesurfer.un('play');
+          wavesurfer.un('pause');
         } catch (error) {
           console.warn("Error during cleanup:", error);
         }
       }
     };
     
-  }, [wavesurfer, isReady, handleRegionIn, handleRegionOut, handleRegionClick, handleRegionUpdated, handleWaveformClick, onReady, randomColor]);
+  }, [wavesurfer, isReady, handleRegionIn, handleRegionOut, handleRegionClick, handleRegionUpdated, handleWaveformClick, onReady, randomColor, vlcSyncUtils]);
   
   // Reset plugin flag when audio file changes
   useEffect(() => {
@@ -434,86 +642,74 @@ const WaveSurferComponent = ({
       
       try {
         wavesurfer.setPlaybackRate(playbackSpeed);
+        
+        // v1.0.11 - Sync playback speed changes to VLC
+        console.log(`⚡ WaveSurfer playback speed changed: ${playbackSpeed}x`);
+        // Note: VLC speed sync would require additional VLC command implementation
+        
       } catch (error) {
         console.error("Error setting playback speed:", error);
       }
     }
   }, [playbackSpeed, wavesurfer, isReady, isAudioLoaded]);
   
-  // VLC synchronization manager - handles ALL WaveSurfer events
-  const setupVLCSynchronization = useCallback(() => {
-    if (!wavesurfer || !wavesurfer.vlc || !wavesurfer.vlc.isConnected()) return;
+  // v1.0.11 - Enhanced VLC synchronization manager with exact mirroring
+  const setupExactVLCMirroring = useCallback(() => {
+    if (!wavesurfer || !wavesurfer.vlc || !wavesurfer.vlc.isConnected()) {
+      setVlcSyncStatus('disconnected');
+      return null;
+    }
     
-    console.log("🔗 Setting up COMPLETE VLC synchronization");
+    console.log("🎯 Setting up EXACT VLC mirroring system");
+    vlcSyncActiveRef.current = true;
+    setVlcSyncStatus('connected');
     
-    // Sync function to mirror WaveSurfer actions to VLC
-    const syncToVLC = {
-      play: async () => {
-        console.log("🎵 WaveSurfer PLAY → Syncing VLC PLAY");
-        try {
-          await wavesurfer.vlc.play();
-          console.log("✅ VLC play synced");
-        } catch (error) {
-          console.error("❌ VLC play sync failed:", error);
-        }
-      },
+    // v1.0.11 - Continuous sync monitoring (every 100ms for exact mirroring)
+    if (vlcSyncIntervalRef.current) {
+      clearInterval(vlcSyncIntervalRef.current);
+    }
+    
+    vlcSyncIntervalRef.current = setInterval(() => {
+      if (!wavesurfer || !wavesurfer.vlc || !vlcSyncActiveRef.current) return;
       
-      pause: async () => {
-        console.log("⏸️ WaveSurfer PAUSE → Syncing VLC PAUSE");
-        try {
-          await wavesurfer.vlc.pause();
-          console.log("✅ VLC pause synced");
-        } catch (error) {
-          console.error("❌ VLC pause sync failed:", error);
+      try {
+        const wsCurrentTime = wavesurfer.getCurrentTime();
+        const vlcCurrentTime = wavesurfer.vlc.getCurrentTime ? wavesurfer.vlc.getCurrentTime() : 0;
+        
+        // v1.0.11 - Detect time drift and correct (tolerance: 100ms)
+        const timeDrift = Math.abs(wsCurrentTime - vlcCurrentTime);
+        if (timeDrift > 0.1 && wavesurfer.isPlaying()) {
+          console.log(`⚠️ Time drift detected: ${timeDrift.toFixed(3)}s - correcting VLC`);
+          wavesurfer.vlc.seekTo(wsCurrentTime);
         }
-      },
-      
-      seek: async (time) => {
-        console.log(`🎯 WaveSurfer SEEK → Syncing VLC SEEK to ${time.toFixed(2)}s`);
-        try {
-          await wavesurfer.vlc.seekTo(time);
-          console.log("✅ VLC seek synced");
-        } catch (error) {
-          console.error("❌ VLC seek sync failed:", error);
-        }
+        
+      } catch (error) {
+        console.warn("VLC sync monitoring error:", error);
       }
-    };
+    }, 100); // v1.0.11 - 100ms monitoring for exact sync
     
-    // Listen to ALL WaveSurfer events and mirror them to VLC
-    wavesurfer.on('play', syncToVLC.play);
-    wavesurfer.on('pause', syncToVLC.pause);
-    
-    // Handle seek events
-    wavesurfer.on('seeking', (currentTime) => {
-      syncToVLC.seek(currentTime);
-    });
-    
-    wavesurfer.on('timeupdate', (currentTime) => {
-      // Only sync if there's a significant difference to avoid constant syncing
-      if (wavesurfer.vlc.getCurrentTime && Math.abs(currentTime - wavesurfer.vlc.getCurrentTime()) > 0.5) {
-        syncToVLC.seek(currentTime);
-      }
-    });
-    
-    console.log("✅ Complete VLC synchronization active");
+    console.log("✅ EXACT VLC mirroring system active");
     
     // Return cleanup function
     return () => {
-      console.log("🧹 Cleaning up VLC synchronization");
-      wavesurfer.un('play', syncToVLC.play);
-      wavesurfer.un('pause', syncToVLC.pause);
-      wavesurfer.un('seeking', syncToVLC.seek);
-      wavesurfer.un('timeupdate', syncToVLC.seek);
+      console.log("🧹 Cleaning up EXACT VLC mirroring");
+      vlcSyncActiveRef.current = false;
+      setVlcSyncStatus('disconnected');
+      
+      if (vlcSyncIntervalRef.current) {
+        clearInterval(vlcSyncIntervalRef.current);
+        vlcSyncIntervalRef.current = null;
+      }
     };
   }, [wavesurfer]);
   
-  // Set up VLC synchronization when VLC becomes available
+  // v1.0.11 - Set up exact VLC mirroring when VLC becomes available
   useEffect(() => {
     if (!wavesurfer || !isReady || !isAudioLoaded) return;
     
     // Check if VLC is connected
     if (wavesurfer.vlc && wavesurfer.vlc.isConnected()) {
-      const cleanup = setupVLCSynchronization();
+      const cleanup = setupExactVLCMirroring();
       return cleanup;
     }
     
@@ -521,14 +717,14 @@ const WaveSurferComponent = ({
     const vlcCheckInterval = setInterval(() => {
       if (wavesurfer.vlc && wavesurfer.vlc.isConnected()) {
         clearInterval(vlcCheckInterval);
-        setupVLCSynchronization();
+        setupExactVLCMirroring();
       }
     }, 1000);
     
     return () => {
       clearInterval(vlcCheckInterval);
     };
-  }, [wavesurfer, isReady, isAudioLoaded, setupVLCSynchronization]);
+  }, [wavesurfer, isReady, isAudioLoaded, setupExactVLCMirroring]);
   
   // Update mute state
   useEffect(() => {
@@ -547,26 +743,25 @@ const WaveSurferComponent = ({
     }
   }, [isMuted, wavesurfer, isReady, isAudioLoaded]);
   
-  // Enhanced Play/Pause handler with VLC sync
+  // v1.0.11 - Enhanced Play/Pause handler with exact VLC sync
   const handlePlayPause = useCallback(() => {
     if (wavesurfer && isReady && isAudioLoaded) {
       try {
-        console.log("🎵 Play/Pause button clicked");
+        console.log("🎵 Play/Pause button clicked - EXACT SYNC MODE");
         
-        // Handle region playback
+        // Handle region playback with exact VLC mirroring
         if (activeRegionRef.current) {
-          console.log("🎵 Playing active region");
+          console.log("🎵 Playing active region with EXACT VLC sync");
           activeRegionRef.current.play();
           
-          // Sync VLC to region
-          if (wavesurfer.vlc && wavesurfer.vlc.isConnected()) {
-            wavesurfer.vlc.seekTo(activeRegionRef.current.start).then(() => {
-              wavesurfer.vlc.play();
-            });
+          // v1.0.11 - Exact VLC region sync
+          const syncUtils = vlcSyncUtils(wavesurfer);
+          if (syncUtils) {
+            syncUtils.syncRegionToVLC(activeRegionRef.current, 'play-pause-region');
           }
         } else {
-          // Normal play/pause - WaveSurfer events will auto-sync VLC
-          console.log("🎵 Toggle play/pause");
+          // Normal play/pause - WaveSurfer events will auto-sync VLC exactly
+          console.log("🎵 Toggle play/pause with EXACT VLC mirroring");
           wavesurfer.playPause();
         }
         
@@ -578,15 +773,72 @@ const WaveSurferComponent = ({
         console.error("Error toggling play/pause:", error);
       }
     }
-  }, [wavesurfer, isReady, isAudioLoaded, onPlayPause]);
+  }, [wavesurfer, isReady, isAudioLoaded, onPlayPause, vlcSyncUtils]);
   
-  // Enhanced keyboard shortcut with VLC sync
+  // v1.0.11 - Enhanced keyboard shortcut with exact VLC sync
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.code === 'Space' && wavesurfer && isReady && isAudioLoaded) {
         e.preventDefault();
-        console.log("⌨️ Spacebar pressed - triggering synchronized play/pause");
+        console.log("⌨️ Spacebar pressed - triggering EXACT synchronized play/pause");
         handlePlayPause();
+      }
+      
+      // v1.0.11 - Additional keyboard shortcuts for exact VLC control
+      if (wavesurfer && isReady && isAudioLoaded) {
+        const syncUtils = vlcSyncUtils(wavesurfer);
+        
+        switch (e.code) {
+          case 'ArrowLeft':
+            if (e.ctrlKey) {
+              e.preventDefault();
+              const currentTime = wavesurfer.getCurrentTime();
+              const newTime = Math.max(0, currentTime - 5); // Seek back 5s
+              wavesurfer.seekTo(newTime / wavesurfer.getDuration());
+              console.log("⏪ Ctrl+Left: Seek back 5s with VLC sync");
+              if (syncUtils) {
+                syncUtils.syncSeekToVLC(newTime, 'keyboard-seek-back');
+              }
+            }
+            break;
+            
+          case 'ArrowRight':
+            if (e.ctrlKey) {
+              e.preventDefault();
+              const currentTime = wavesurfer.getCurrentTime();
+              const duration = wavesurfer.getDuration();
+              const newTime = Math.min(duration, currentTime + 5); // Seek forward 5s
+              wavesurfer.seekTo(newTime / duration);
+              console.log("⏩ Ctrl+Right: Seek forward 5s with VLC sync");
+              if (syncUtils) {
+                syncUtils.syncSeekToVLC(newTime, 'keyboard-seek-forward');
+              }
+            }
+            break;
+            
+          case 'Home':
+            e.preventDefault();
+            wavesurfer.seekTo(0);
+            console.log("🏠 Home: Seek to start with VLC sync");
+            if (syncUtils) {
+              syncUtils.syncSeekToVLC(0, 'keyboard-home');
+            }
+            break;
+            
+          case 'End':
+            e.preventDefault();
+            const duration = wavesurfer.getDuration();
+            wavesurfer.seekTo(0.99); // Almost to end
+            console.log("🔚 End: Seek to end with VLC sync");
+            if (syncUtils) {
+              syncUtils.syncSeekToVLC(duration * 0.99, 'keyboard-end');
+            }
+            break;
+            
+          default:
+            // v1.0.11 - Added default case to fix ESLint warning
+            break;
+        }
       }
     };
     
@@ -594,10 +846,39 @@ const WaveSurferComponent = ({
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [wavesurfer, isReady, isAudioLoaded, handlePlayPause]);
+  }, [wavesurfer, isReady, isAudioLoaded, handlePlayPause, vlcSyncUtils]);
+  
+  // v1.0.11 - Cleanup VLC sync on unmount
+  useEffect(() => {
+    return () => {
+      if (vlcSyncIntervalRef.current) {
+        clearInterval(vlcSyncIntervalRef.current);
+      }
+      if (pendingVlcSeekRef.current) {
+        clearTimeout(pendingVlcSeekRef.current);
+      }
+    };
+  }, []);
   
   return (
     <div className="waveform-wrapper">
+      {/* v1.0.11 - Added VLC sync status indicator */}
+      {vlcSyncStatus === 'connected' && (
+        <div style={{
+          position: 'absolute',
+          top: '10px',
+          right: '10px',
+          background: 'rgba(40, 167, 69, 0.8)',
+          color: 'white',
+          padding: '4px 8px',
+          borderRadius: '4px',
+          fontSize: '0.8rem',
+          zIndex: 1000
+        }}>
+          🎯 VLC EXACT SYNC
+        </div>
+      )}
+      
       {/* Single container for waveform, spectrogram and timeline */}
       <div id="waveform-container" ref={containerRef} style={{
         width: '100%',
@@ -650,6 +931,12 @@ const WaveSurferComponent = ({
       {isReady && isAudioLoaded && (
         <div className="current-time" style={{ textAlign: 'center', marginBottom: '10px' }}>
           Time: {formatTime(currentTime)} / {formatTime(wavesurfer?.getDuration() || 0)}
+          {/* v1.0.11 - Show sync status in time display */}
+          {vlcSyncStatus === 'connected' && (
+            <span style={{ marginLeft: '10px', color: '#28a745', fontSize: '0.8rem' }}>
+              🎯 SYNCED
+            </span>
+          )}
         </div>
       )}
     </div>
