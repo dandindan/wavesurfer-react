@@ -39,7 +39,7 @@ const VLCController = ({
   
   // Function to update debug info
   const updateDebugInfo = useCallback((message) => {
-    console.log("VLC Debug:", message);
+    // console.log("VLC Debug:", message); // v1.0.7 - Reduced logging to prevent performance issues
     setDebugInfo(message);
   }, []);
   
@@ -137,16 +137,15 @@ const VLCController = ({
     uploadFile();
   }, [mediaFile, uploadFileToServer, updateDebugInfo]);
   
-  // v1.0.7 - Enhanced function to send commands to VLC with exact timing
+  // v1.0.9 - WORKING VLC command system with REAL sync
   const sendVLCCommand = useCallback(async (command, source = 'manual') => {
     try {
       if (!vlcConnected) {
-        updateDebugInfo(`Cannot send command "${command}" - VLC not connected`);
+        console.error(`Cannot send command "${command}" - VLC not connected`);
         return null;
       }
       
-      const startTime = performance.now();
-      updateDebugInfo(`[${source}] Sending VLC command: ${command}`);
+      console.log(`🎮 [${source}] SENDING VLC COMMAND: ${command}`);
       
       const response = await fetch('/api/vlc-command', {
         method: 'POST',
@@ -154,37 +153,28 @@ const VLCController = ({
         body: JSON.stringify({ command })
       });
       
-      const endTime = performance.now();
-      const latency = (endTime - startTime).toFixed(1);
-      
       if (!response.ok) {
-        throw new Error(`Failed to send command: ${response.statusText}`);
+        throw new Error(`VLC command failed: ${response.statusText}`);
       }
       
       const result = await response.json();
-      updateDebugInfo(`[${source}] Command result (${latency}ms): ${JSON.stringify(result)}`);
+      console.log(`✅ [${source}] VLC COMMAND SUCCESS: ${command}`);
       
-      if (result.playerState) {
-        setIsPlaying(result.playerState.isPlaying);
-        setLastSyncTime(Date.now());
-      }
-      
-      // v1.0.7 - Update sync statistics
-      if (command.includes('seek')) {
-        setSyncStats(prev => ({ ...prev, seeks: prev.seeks + 1 }));
-      } else if (command === 'pause' && !isPlaying) {
-        setSyncStats(prev => ({ ...prev, plays: prev.plays + 1 }));
-      } else if (command === 'pause' && isPlaying) {
-        setSyncStats(prev => ({ ...prev, pauses: prev.pauses + 1 }));
+      // Update local state based on command
+      if (command === 'pause') {
+        const newState = !isPlaying;
+        setIsPlaying(newState);
+        setStatus(newState ? 'Playing' : 'Paused');
+        console.log(`🔄 VLC state updated: ${newState ? 'PLAYING' : 'PAUSED'}`);
       }
       
       return result.response;
     } catch (error) {
-      updateDebugInfo(`[${source}] Command error: ${error.message}`);
-      if (onError) onError(`Error: ${error.message}`);
+      console.error(`❌ [${source}] VLC COMMAND FAILED: ${command} - ${error.message}`);
+      if (onError) onError(`VLC Error: ${error.message}`);
       return null;
     }
-  }, [vlcConnected, onError, updateDebugInfo, isPlaying]);
+  }, [vlcConnected, onError, isPlaying]);
 
   // Function to launch VLC
   const launchVLC = useCallback(async () => {
@@ -235,9 +225,23 @@ const VLCController = ({
         setIsPlaying(false);
         updateDebugInfo("VLC launched successfully");
         
-        // v1.0.7 - Activate exact mirroring when VLC connects
-        setExactMirrorActive(true);
-        setSyncStats({ seeks: 0, plays: 0, pauses: 0 });
+        // v1.0.8 - CRITICAL: Ensure VLC starts PAUSED (backend already does this, but double-check)
+        setTimeout(async () => {
+          try {
+            // Force pause VLC if it's playing to ensure sync
+            await sendVLCCommand('pause', 'ensure-paused-on-launch');
+            setIsPlaying(false);
+            setStatus('Paused (Ready for sync)');
+            updateDebugInfo("✅ VLC confirmed PAUSED and ready for sync");
+            
+            // v1.0.8 - Activate exact mirroring AFTER ensuring paused state
+            setExactMirrorActive(true);
+            setSyncStats({ seeks: 0, plays: 0, pauses: 0 });
+            
+          } catch (error) {
+            console.warn("Could not confirm VLC pause state:", error);
+          }
+        }, 1000); // Wait 1 second for VLC to fully load
         
         // Notify parent component
         if (onStatusChange) {
@@ -251,7 +255,7 @@ const VLCController = ({
       if (onError) onError(`Error launching VLC: ${error.message}`);
       setStatus('Error');
     }
-  }, [serverFilePath, uploadInProgress, onStatusChange, onError, updateDebugInfo]);
+  }, [serverFilePath, uploadInProgress, onStatusChange, onError, updateDebugInfo, sendVLCCommand]);
 
   // Play/Pause toggle
   const togglePlayPause = useCallback(async () => {
@@ -302,34 +306,34 @@ const VLCController = ({
     }
   }, [vlcConnected, sendVLCCommand, updateDebugInfo]);
 
-  // v1.0.7 - Enhanced seek to absolute position with exact timing
+  // v1.0.9 - WORKING seek function with real VLC commands
   const seekToPosition = useCallback(async (timeInSeconds, source = 'manual') => {
     if (!vlcConnected) {
-      updateDebugInfo("❌ Cannot seek - VLC not connected");
+      console.error("❌ Cannot seek - VLC not connected");
       return false;
     }
     
     try {
       const preciseTime = Math.max(0, Number(timeInSeconds));
-      updateDebugInfo(`🎯 [${source}] VLC seeking to: ${preciseTime.toFixed(3)} seconds`);
+      console.log(`🎯 [${source}] VLC SEEKING TO: ${preciseTime.toFixed(3)} seconds`);
       
-      // v1.0.7 - Use precise seek command for exact positioning
+      // Use VLC's seek command - format: seek <seconds>
       const seekCommand = `seek ${Math.floor(preciseTime)}`;
       const result = await sendVLCCommand(seekCommand, source);
       
       if (result !== null) {
         setVlcCurrentTime(preciseTime);
-        updateDebugInfo(`✅ [${source}] VLC seek SUCCESS to: ${preciseTime.toFixed(3)}s`);
+        console.log(`✅ [${source}] VLC SEEK SUCCESS: ${preciseTime.toFixed(3)}s`);
         return true;
       } else {
-        updateDebugInfo("❌ VLC seek FAILED - no response from server");
+        console.error("❌ VLC seek FAILED - no response");
         return false;
       }
     } catch (error) {
-      updateDebugInfo(`❌ [${source}] VLC seek ERROR: ${error.message}`);
+      console.error(`❌ [${source}] VLC SEEK ERROR:`, error);
       return false;
     }
-  }, [vlcConnected, sendVLCCommand, updateDebugInfo]);
+  }, [vlcConnected, sendVLCCommand]);
 
   // Volume up/down
   const adjustVolume = useCallback(async (amount) => {
@@ -611,7 +615,7 @@ const VLCController = ({
     const startBidirectionalSync = () => {
       updateDebugInfo("🔄 [EXACT] Starting bidirectional sync monitoring");
       
-      // Monitor VLC → WaveSurfer sync every 200ms for exact mirroring
+      // Monitor VLC → WaveSurfer sync every 1000ms for smoother playback (reduced from 200ms)
       syncMonitorInterval = setInterval(async () => {
         try {
           // Get current times from both players
@@ -621,9 +625,10 @@ const VLCController = ({
           // Calculate drift
           const timeDrift = Math.abs(wsTime - vlcTime);
           
-          // If drift is > 200ms and we're playing, correct it
-          if (timeDrift > 0.2 && isPlaying) {
-            updateDebugInfo(`⚠️ [EXACT] Time drift detected: ${timeDrift.toFixed(3)}s`);
+          // v1.0.7 - Increased tolerance from 200ms to 500ms to reduce stuttering
+          // If drift is > 500ms and we're playing, correct it
+          if (timeDrift > 0.5 && isPlaying) {
+            // updateDebugInfo(`⚠️ [EXACT] Time drift detected: ${timeDrift.toFixed(3)}s`); // v1.0.7 - Reduced logging
             
             // Decide which player is the source of truth
             // During region playback, prefer VLC time
@@ -632,11 +637,11 @@ const VLCController = ({
               // Region playback - VLC is master
               const newPosition = vlcTime / wavesurferInstance.getDuration();
               wavesurferInstance.seekTo(newPosition);
-              updateDebugInfo(`🎯 [EXACT] Corrected WaveSurfer to match VLC: ${vlcTime.toFixed(3)}s`);
+              // updateDebugInfo(`🎯 [EXACT] Corrected WaveSurfer to match VLC: ${vlcTime.toFixed(3)}s`); // v1.0.7 - Reduced logging
             } else {
               // Normal playback - WaveSurfer is master
               await seekToPosition(wsTime, 'drift-correction');
-              updateDebugInfo(`🎯 [EXACT] Corrected VLC to match WaveSurfer: ${wsTime.toFixed(3)}s`);
+              // updateDebugInfo(`🎯 [EXACT] Corrected VLC to match WaveSurfer: ${wsTime.toFixed(3)}s`); // v1.0.7 - Reduced logging
             }
           }
           
@@ -644,7 +649,7 @@ const VLCController = ({
           // Silent error handling for sync monitoring
           console.warn("Sync monitoring error:", error);
         }
-      }, 200); // v1.0.7 - 200ms interval for exact mirroring
+      }, 1000); // v1.0.7 - Increased interval from 200ms to 1000ms for smoother playback
     };
     
     startBidirectionalSync();

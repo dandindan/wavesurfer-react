@@ -1,7 +1,7 @@
 {
   "name": "wavesurfer-react",
-  "version": "1.0.0",
-  "description": "WaveSurfer with Regions - React Implementation",
+  "version": "1.0.17",
+  "description": "WaveSurfer with MPV Real-time Sync - Enhanced Integration",
   "private": true,
   "proxy": "http://localhost:3001",
   "dependencies": {
@@ -21,7 +21,10 @@
     "test": "react-scripts test",
     "eject": "react-scripts eject",
     "server": "node server/server.js",
-    "dev": "concurrently \"npm run server\" \"npm run start\""
+    "dev": "concurrently \"npm run server\" \"npm run start\"",
+    "dev:verbose": "concurrently --names \"MPV-API,React\" --prefix-colors \"blue,green\" \"npm run server\" \"npm run start\"",
+    "mpv-test": "mpv --version",
+    "system-check": "node -e \"console.log('Node:', process.version); console.log('NPM:', process.env.npm_version || 'Unknown');\""
   },
   "eslintConfig": {
     "extends": [
