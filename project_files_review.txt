@@ -1,6 +1,6 @@
 # Project Files Review
-# Generated: 2025-06-11T14-59-27.618Z
-# Total files: 17
+# Generated: 2025-06-11T19-14-52.731Z
+# Total files: 16
 
 
 ================================================================================
@@ -4254,7 +4254,7 @@ export default StatusBar;
 File: src/components/UltimateMPVController.js
 ================================================================================
 
-// src/components/UltimateMPVController.js
+// src/components/UltimateMPVController.js - Updated with Single Row Layout & Combined Play/Pause
 import React, { useEffect, useCallback, useRef } from 'react';
 import { useAudioSyncStore } from '../store/audioSyncStore';
 
@@ -4537,71 +4537,59 @@ const UltimateMPVController = ({
     }, 800); // 800ms interval for smooth sync
   }, [mpvConnected, setMpvState]);
   
-  // 🎯 Bidirectional sync - WaveSurfer to MPV
-  useEffect(() => {
-    if (!mpvConnected) return;
-    
-    const syncToMPV = async () => {
-      try {
-        // Sync time position with high precision
-        await queueCommand(['seek', currentTime, 'absolute'], 'high');
-        
-        // Sync play state
-        await queueCommand(['set_property', 'pause', !isPlaying], 'high');
-        
-        // Sync playback rate
-        await queueCommand(['set_property', 'speed', playbackRate], 'normal');
-        
-      } catch (error) {
-        console.warn('WaveSurfer to MPV sync failed:', error);
-      }
-    };
-    
-    // Debounce sync to prevent command flooding
-    const debounceTimer = setTimeout(syncToMPV, 100);
-    return () => clearTimeout(debounceTimer);
-  }, [currentTime, isPlaying, playbackRate, mpvConnected, queueCommand]);
-  
-  // 🎵 Region playback sync
-  useEffect(() => {
-    if (!mpvConnected || !activeRegion) return;
-    
-    const playRegion = async () => {
-      try {
-        console.log(`🎵 Playing region: ${activeRegion.start}s - ${activeRegion.end}s`);
-        
-        // Seek to region start with frame accuracy
-        await queueCommand(['seek', activeRegion.start, 'absolute', 'exact'], 'high');
-        
-        // Start playback if not already playing
-        if (!isPlaying) {
-          await queueCommand(['set_property', 'pause', false], 'high');
-        }
-        
-        setStatus(`🎵 Playing region: ${activeRegion.start.toFixed(2)}s - ${activeRegion.end.toFixed(2)}s`);
-      } catch (error) {
-        console.warn('Region playback failed:', error);
-      }
-    };
-    
-    playRegion();
-  }, [activeRegion, mpvConnected, isPlaying, queueCommand, setStatus]);
-  
   // 🎮 Control methods for UI
   const controls = {
-    play: () => queueCommand(['set_property', 'pause', false], 'high'),
-    pause: () => queueCommand(['set_property', 'pause', true], 'high'),
-    stop: () => Promise.all([
-      queueCommand(['set_property', 'pause', true], 'high'),
-      queueCommand(['seek', 0, 'absolute'], 'high')
-    ]),
-    seekTo: (time) => queueCommand(['seek', time, 'absolute', 'exact'], 'high'),
-    seekRelative: (seconds) => queueCommand(['seek', seconds, 'relative'], 'high'),
-    setVolume: (volume) => queueCommand(['set_property', 'volume', volume]),
-    setSpeed: (speed) => queueCommand(['set_property', 'speed', speed]),
-    toggleMute: () => queueCommand(['cycle', 'mute']),
-    toggleFullscreen: () => queueCommand(['cycle', 'fullscreen']),
-    screenshot: () => queueCommand(['screenshot'])
+    playPause: async () => {
+      try {
+        await queueCommand(['cycle', 'pause'], 'high');
+        console.log('🎮 MPV play/pause toggled');
+      } catch (error) {
+        console.error('Play/pause error:', error);
+      }
+    },
+    stop: async () => {
+      try {
+        await Promise.all([
+          queueCommand(['set_property', 'pause', true], 'high'),
+          queueCommand(['seek', 0, 'absolute'], 'high')
+        ]);
+        console.log('🎮 MPV stopped');
+      } catch (error) {
+        console.error('Stop error:', error);
+      }
+    },
+    seekRelative: async (seconds) => {
+      try {
+        await queueCommand(['seek', seconds, 'relative'], 'high');
+        console.log(`🎮 MPV seek ${seconds}s`);
+      } catch (error) {
+        console.error('Seek error:', error);
+      }
+    },
+    setVolume: async (volume) => {
+      try {
+        await queueCommand(['set_property', 'volume', volume]);
+        console.log(`🎮 MPV volume: ${volume}`);
+      } catch (error) {
+        console.error('Volume error:', error);
+      }
+    },
+    toggleMute: async () => {
+      try {
+        await queueCommand(['cycle', 'mute']);
+        console.log('🎮 MPV mute toggled');
+      } catch (error) {
+        console.error('Mute error:', error);
+      }
+    },
+    toggleFullscreen: async () => {
+      try {
+        await queueCommand(['cycle', 'fullscreen']);
+        console.log('🎮 MPV fullscreen toggled');
+      } catch (error) {
+        console.error('Fullscreen error:', error);
+      }
+    }
   };
   
   // 🧹 Cleanup system
@@ -4632,86 +4620,328 @@ const UltimateMPVController = ({
   
   return (
     <div className="ultimate-mpv-controller">
-      {/* 🚀 Launch button */}
-      <button 
-        className={`mpv-launch ${mpvConnected ? 'connected' : ''}`}
-        onClick={launchMPV}
-        disabled={!serverFilePathRef.current || mpvConnected}
-        title={mpvConnected ? "Ultimate MPV Connected & Synced!" : "Launch Ultimate MPV Player"}
-      >
-        {mpvConnected ? '🎯 MPV SYNCED' : '🚀 LAUNCH MPV'}
-      </button>
-      
-      {/* 🎮 Control buttons - only show when connected */}
-      {mpvConnected && (
-        <div className="mpv-controls">
-          <button onClick={controls.play} title="Play" className="control-btn">
-            <i className="fas fa-play"></i>
-          </button>
-          <button onClick={controls.pause} title="Pause" className="control-btn">
-            <i className="fas fa-pause"></i>
-          </button>
-          <button onClick={controls.stop} title="Stop" className="control-btn">
-            <i className="fas fa-stop"></i>
-          </button>
-          <button onClick={() => controls.seekRelative(-10)} title="Seek Back 10s" className="control-btn">
-            <i className="fas fa-backward"></i>
-          </button>
-          <button onClick={() => controls.seekRelative(10)} title="Seek Forward 10s" className="control-btn">
-            <i className="fas fa-forward"></i>
-          </button>
-          <button onClick={controls.toggleMute} title="Toggle Mute" className="control-btn">
-            <i className="fas fa-volume-mute"></i>
-          </button>
-          <button onClick={controls.toggleFullscreen} title="Fullscreen" className="control-btn">
-            <i className="fas fa-expand"></i>
-          </button>
-          <button onClick={controls.screenshot} title="Screenshot" className="control-btn">
-            <i className="fas fa-camera"></i>
-          </button>
-        </div>
-      )}
-      
-      {/* 📊 Status display */}
-      <div className="mpv-status">
-        <div className={`status-indicator ${mpvConnected ? 'connected' : 'disconnected'}`}>
-          <span className="status-icon">
-            {mpvConnected ? '🟢' : '🔴'}
-          </span>
-          <span className="status-text">
-            {mpvConnected ? 'ULTIMATE SYNC ACTIVE' : 'Disconnected'}
-          </span>
-        </div>
+      {/* 🎮 Single Row Controls Layout */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '12px',
+        flexWrap: 'wrap',
+        justifyContent: 'space-between'
+      }}>
         
+        {/* 🚀 Launch Button */}
+        <button 
+          className={`mpv-launch ${mpvConnected ? 'connected' : ''}`}
+          onClick={launchMPV}
+          disabled={!serverFilePathRef.current || mpvConnected}
+          title={mpvConnected ? "Ultimate MPV Connected & Synced!" : "Launch Ultimate MPV Player"}
+          style={{
+            background: mpvConnected 
+              ? 'linear-gradient(145deg, #4caf50, #66bb6a)' 
+              : 'linear-gradient(145deg, #f44336, #e57373)',
+            color: 'white',
+            border: 'none',
+            padding: '12px 20px',
+            borderRadius: '10px',
+            fontSize: '1rem',
+            fontWeight: '600',
+            cursor: !serverFilePathRef.current || mpvConnected ? 'not-allowed' : 'pointer',
+            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            boxShadow: mpvConnected 
+              ? '0 4px 15px rgba(76, 175, 80, 0.4)' 
+              : '0 4px 15px rgba(244, 67, 54, 0.4)',
+            opacity: !serverFilePathRef.current ? 0.5 : 1
+          }}
+        >
+          {mpvConnected ? '🎯 MPV CONNECTED' : '🚀 LAUNCH MPV'}
+        </button>
+
+        {/* 🎮 Playback Controls - Only show when connected */}
         {mpvConnected && (
-          <div className="sync-info">
-            <span className="sync-accuracy">
-              {Math.abs(currentTime - useAudioSyncStore.getState().mpvCurrentTime) < 0.05 ? 
-                '✅ Perfect Sync' : 
-                `⚠️ ${Math.abs(currentTime - useAudioSyncStore.getState().mpvCurrentTime * 1000).toFixed(0)}ms drift`
-              }
-            </span>
-            <span className="command-queue">
-              Queue: {commandQueueRef.current.length} commands
-            </span>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            flex: '1',
+            justifyContent: 'center'
+          }}>
+            
+            {/* Combined Play/Pause Button - Same style as WaveSurfer */}
+            <button 
+              onClick={controls.playPause}
+              title="Play/Pause (Space)"
+              style={{
+                background: isPlaying 
+                  ? 'linear-gradient(145deg, #4caf50, #66bb6a)' 
+                  : 'linear-gradient(145deg, #4a9eff, #08c3f2)',
+                color: 'white',
+                border: 'none',
+                padding: '12px 16px',
+                borderRadius: '10px',
+                fontSize: '1.1rem',
+                fontWeight: '600',
+                cursor: 'pointer',
+                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                minWidth: '100px',
+                justifyContent: 'center',
+                boxShadow: isPlaying 
+                  ? '0 4px 15px rgba(76, 175, 80, 0.4)' 
+                  : '0 4px 15px rgba(74, 158, 255, 0.4)'
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.transform = 'translateY(-2px) scale(1.02)';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.transform = 'translateY(0) scale(1)';
+              }}
+            >
+              <i className={`fas ${isPlaying ? 'fa-pause' : 'fa-play'}`}></i>
+              {isPlaying ? 'Pause' : 'Play'}
+            </button>
+
+            {/* Stop Button */}
+            <button 
+              onClick={controls.stop}
+              title="Stop"
+              style={{
+                background: 'linear-gradient(145deg, #666, #555)',
+                color: 'white',
+                border: 'none',
+                padding: '12px',
+                borderRadius: '10px',
+                fontSize: '1.1rem',
+                cursor: 'pointer',
+                transition: 'all 0.3s ease',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '48px',
+                height: '48px',
+                boxShadow: '0 4px 15px rgba(102, 102, 102, 0.3)'
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.transform = 'translateY(-2px)';
+                e.target.style.background = 'linear-gradient(145deg, #777, #666)';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.transform = 'translateY(0)';
+                e.target.style.background = 'linear-gradient(145deg, #666, #555)';
+              }}
+            >
+              <i className="fas fa-stop"></i>
+            </button>
+
+            {/* Seek Backward */}
+            <button 
+              onClick={() => controls.seekRelative(-10)}
+              title="Seek Back 10s"
+              style={{
+                background: 'linear-gradient(145deg, #4a9eff, #08c3f2)',
+                color: 'white',
+                border: 'none',
+                padding: '12px',
+                borderRadius: '10px',
+                fontSize: '1.1rem',
+                cursor: 'pointer',
+                transition: 'all 0.3s ease',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '48px',
+                height: '48px',
+                boxShadow: '0 4px 15px rgba(74, 158, 255, 0.3)'
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.transform = 'translateY(-2px)';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.transform = 'translateY(0)';
+              }}
+            >
+              <i className="fas fa-backward"></i>
+            </button>
+
+            {/* Seek Forward */}
+            <button 
+              onClick={() => controls.seekRelative(10)}
+              title="Seek Forward 10s"
+              style={{
+                background: 'linear-gradient(145deg, #4a9eff, #08c3f2)',
+                color: 'white',
+                border: 'none',
+                padding: '12px',
+                borderRadius: '10px',
+                fontSize: '1.1rem',
+                cursor: 'pointer',
+                transition: 'all 0.3s ease',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '48px',
+                height: '48px',
+                boxShadow: '0 4px 15px rgba(74, 158, 255, 0.3)'
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.transform = 'translateY(-2px)';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.transform = 'translateY(0)';
+              }}
+            >
+              <i className="fas fa-forward"></i>
+            </button>
+
+            {/* Volume Down */}
+            <button 
+              onClick={() => controls.setVolume(Math.max(0, 70))}
+              title="Volume Down"
+              style={{
+                background: 'linear-gradient(145deg, #ff9800, #ffb74d)',
+                color: 'white',
+                border: 'none',
+                padding: '12px',
+                borderRadius: '10px',
+                fontSize: '1rem',
+                cursor: 'pointer',
+                transition: 'all 0.3s ease',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '48px',
+                height: '48px',
+                boxShadow: '0 4px 15px rgba(255, 152, 0, 0.3)'
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.transform = 'translateY(-2px)';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.transform = 'translateY(0)';
+              }}
+            >
+              <i className="fas fa-volume-down"></i>
+            </button>
+
+            {/* Volume Up */}
+            <button 
+              onClick={() => controls.setVolume(100)}
+              title="Volume Up"
+              style={{
+                background: 'linear-gradient(145deg, #ff9800, #ffb74d)',
+                color: 'white',
+                border: 'none',
+                padding: '12px',
+                borderRadius: '10px',
+                fontSize: '1rem',
+                cursor: 'pointer',
+                transition: 'all 0.3s ease',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '48px',
+                height: '48px',
+                boxShadow: '0 4px 15px rgba(255, 152, 0, 0.3)'
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.transform = 'translateY(-2px)';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.transform = 'translateY(0)';
+              }}
+            >
+              <i className="fas fa-volume-up"></i>
+            </button>
+
+            {/* Mute Toggle */}
+            <button 
+              onClick={controls.toggleMute}
+              title="Toggle Mute"
+              style={{
+                background: 'linear-gradient(145deg, #f44336, #e57373)',
+                color: 'white',
+                border: 'none',
+                padding: '12px',
+                borderRadius: '10px',
+                fontSize: '1rem',
+                cursor: 'pointer',
+                transition: 'all 0.3s ease',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '48px',
+                height: '48px',
+                boxShadow: '0 4px 15px rgba(244, 67, 54, 0.3)'
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.transform = 'translateY(-2px)';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.transform = 'translateY(0)';
+              }}
+            >
+              <i className="fas fa-volume-mute"></i>
+            </button>
+
+            {/* Fullscreen */}
+            <button 
+              onClick={controls.toggleFullscreen}
+              title="Toggle Fullscreen"
+              style={{
+                background: 'linear-gradient(145deg, #9c27b0, #ba68c8)',
+                color: 'white',
+                border: 'none',
+                padding: '12px',
+                borderRadius: '10px',
+                fontSize: '1rem',
+                cursor: 'pointer',
+                transition: 'all 0.3s ease',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '48px',
+                height: '48px',
+                boxShadow: '0 4px 15px rgba(156, 39, 176, 0.3)'
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.transform = 'translateY(-2px)';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.transform = 'translateY(0)';
+              }}
+            >
+              <i className="fas fa-expand"></i>
+            </button>
+          </div>
+        )}
+
+        {/* 📊 Status Display */}
+        {mpvConnected && (
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'flex-end',
+            fontSize: '0.85rem',
+            color: '#b0b0b0',
+            minWidth: '120px'
+          }}>
+            <div style={{
+              color: '#4caf50',
+              fontWeight: '600',
+              marginBottom: '2px'
+            }}>
+              🎯 SYNCED
+            </div>
+            <div style={{ color: '#4a9eff' }}>
+              {isPlaying ? '▶️ Playing' : '⏸️ Paused'}
+            </div>
           </div>
         )}
       </div>
-      
-      {/* 🎯 Pro tip display */}
-      {mpvConnected && (
-        <div className="pro-tips">
-          <details>
-            <summary>🎯 Pro Tips</summary>
-            <div className="tips-content">
-              <div>• Click regions for instant sync playback</div>
-              <div>• Drag on waveform to create new regions</div>
-              <div>• Use keyboard shortcuts for quick control</div>
-              <div>• MPV window stays on top for easy monitoring</div>
-            </div>
-          </details>
-        </div>
-      )}
     </div>
   );
 };
@@ -4722,14 +4952,14 @@ export default UltimateMPVController;
 File: src/components/UltimateWaveSurfer.js
 ================================================================================
 
-// src/components/UltimateWaveSurfer.js - COMPLETE WORKING VERSION
-import React, { useRef, useMemo, useCallback, useEffect } from 'react';
+// src/components/UltimateWaveSurfer.js - v21 Enhanced MPV Controls Layout & Styling
+import React, { useRef, useMemo, useCallback, useEffect, useState } from 'react';
 import { useWavesurfer } from '@wavesurfer/react';
-import RegionsPlugin from 'wavesurfer.js/dist/plugins/regions.esm.js';
-import TimelinePlugin from 'wavesurfer.js/dist/plugins/timeline.esm.js';
-import SpectrogramPlugin from 'wavesurfer.js/dist/plugins/spectrogram.esm.js';
-import MinimapPlugin from 'wavesurfer.js/dist/plugins/minimap.esm.js';
-import HoverPlugin from 'wavesurfer.js/dist/plugins/hover.esm.js';
+import RegionsPlugin from 'wavesurfer.js/dist/plugins/regions.js';
+import TimelinePlugin from 'wavesurfer.js/dist/plugins/timeline.js';
+import SpectrogramPlugin from 'wavesurfer.js/dist/plugins/spectrogram.js';
+import MinimapPlugin from 'wavesurfer.js/dist/plugins/minimap.js';
+import HoverPlugin from 'wavesurfer.js/dist/plugins/hover.js';
 import { useAudioSyncStore } from '../store/audioSyncStore';
 
 const UltimateWaveSurfer = ({ 
@@ -4742,6 +4972,32 @@ const UltimateWaveSurfer = ({
 }) => {
   const containerRef = useRef(null);
   const minimapRef = useRef(null);
+  
+  // 🔄 Region loop state (using ref to avoid closure issues)
+  const [loopRegions, setLoopRegions] = useState(true);
+  const loopRegionsRef = useRef(true);
+  
+  // 🎯 Ultimate Sync System State
+  const [syncActive, setSyncActive] = useState(false);
+  const [syncMode, setSyncMode] = useState('idle'); // 'idle', 'wavesurfer-master', 'mpv-master'
+  const [syncAccuracy, setSyncAccuracy] = useState(0);
+  const [lastSyncTime, setLastSyncTime] = useState(0);
+  
+  // 🔄 Sync refs for avoiding closure issues
+  const syncActiveRef = useRef(false);
+  const syncModeRef = useRef('idle');
+  const lastWsTimeRef = useRef(0);
+  const lastMpvTimeRef = useRef(0);
+  const syncIntervalRef = useRef(null);
+  const commandQueueRef = useRef([]);
+  const isProcessingRef = useRef(false);
+  const driftHistoryRef = useRef([]);
+  const performanceStatsRef = useRef({
+    syncEvents: 0,
+    driftCorrections: 0,
+    avgAccuracy: 0,
+    lastReset: Date.now()
+  });
   
   // 🎯 Global state management
   const { 
@@ -4757,7 +5013,12 @@ const UltimateWaveSurfer = ({
     setStatus,
     activeRegion,
     setActiveRegion,
-    addRegion
+    addRegion,
+    mpvConnected,
+    mpvCurrentTime,
+    mpvPlaying,
+    setMpvState,
+    updateSyncAccuracy
   } = useAudioSyncStore();
 
   // 🚀 Create regions plugin SEPARATELY (following official example)
@@ -4799,7 +5060,10 @@ const UltimateWaveSurfer = ({
       container: minimapRef.current || undefined,
       height: 50,
       waveColor: '#777',
-      progressColor: '#08c3f2'
+      progressColor: '#08c3f2',
+      // Make minimap regions much brighter and more visible
+      regionColor: 'rgba(74, 158, 255, 0.8)', // Bright blue with high opacity
+      regionBorderColor: '#4a9eff' // Bright border
     })
   ], [regions]);
 
@@ -4807,23 +5071,27 @@ const UltimateWaveSurfer = ({
   const { wavesurfer, isReady, currentTime: wsCurrentTime } = useWavesurfer({
     container: containerRef,
     height,
-    waveColor: '#4a9eff',
-    progressColor: '#08c3f2',
+    waveColor: '#777', // Match minimap grey
+    progressColor: '#08c3f2', // Match minimap blue
     cursorColor: '#ff5722',
     cursorWidth: 2,
     normalize: true,
     responsive: true,
-    hideScrollbar: true,
+    hideScrollbar: false, // Enable scrollbar for zoom navigation
     url: audioUrl,
     plugins
   });
 
-  // 🎯 Setup regions after decode (following official example)
+  // 🎯 Setup regions after decode (following official example with loop logic)
+  // Use ref to prevent multiple setups
+  const isRegionsSetupRef = useRef(false);
+  
   useEffect(() => {
-    if (!wavesurfer || !isReady) return;
+    if (!wavesurfer || !isReady || isRegionsSetupRef.current) return;
 
     const setupRegions = () => {
-      console.log('🎵 Setting up regions after decode');
+      console.log('🎵 Setting up regions with loop functionality - ONCE');
+      isRegionsSetupRef.current = true;
       
       try {
         // Enable drag selection (official pattern)
@@ -4831,11 +5099,34 @@ const UltimateWaveSurfer = ({
           color: 'rgba(74, 158, 255, 0.1)',
         });
 
-        // Set up event handlers (official pattern)
+        // Set up event handlers (official pattern with loop logic)
         let activeRegionRef = null;
 
+        // Region in - track active region
+        const handleRegionIn = (region) => {
+          console.log('🎵 Region in:', region);
+          activeRegionRef = region;
+          setActiveRegion(region);
+        };
+
+        // Region out - handle looping
+        const handleRegionOut = (region) => {
+          console.log('🎵 Region out:', region, 'Loop enabled:', loopRegionsRef.current);
+          if (activeRegionRef === region) {
+            if (loopRegionsRef.current) {
+              // Loop the region
+              region.play();
+              console.log('🔄 Looping region:', region);
+            } else {
+              activeRegionRef = null;
+              setActiveRegion(null);
+              console.log('⏸️ No loop - stopping region');
+            }
+          }
+        };
+
         // Region clicked - play and change color
-        regions.on('region-clicked', (region, e) => {
+        const handleRegionClick = (region, e) => {
           e.stopPropagation();
           console.log('🎵 Region clicked:', region);
           
@@ -4856,69 +5147,384 @@ const UltimateWaveSurfer = ({
           }
           
           if (onRegionClick) onRegionClick(region);
-        });
+        };
 
-        // Region created
-        regions.on('region-created', (region) => {
-          console.log('🎵 Region created:', region);
+        // Region created - FIX: Use functional update to prevent count issues
+        const handleRegionCreated = (region) => {
+          console.log('🎵 Region created ONCE:', region);
           addRegion(region);
           setStatus(`Region created: ${region.start.toFixed(2)}s - ${region.end.toFixed(2)}s`);
-        });
+        };
 
         // Region updated
-        regions.on('region-updated', (region) => {
+        const handleRegionUpdated = (region) => {
           console.log('🎵 Region updated:', region);
           setActiveRegion(region);
-        });
-
-        // Region playback events (official pattern)
-        regions.on('region-in', (region) => {
-          console.log('🎵 Region in:', region);
-          activeRegionRef = region;
-        });
-        
-        regions.on('region-out', (region) => {
-          console.log('🎵 Region out:', region);
-          if (activeRegionRef === region) {
-            // Optional: enable looping
-            // region.play();
-            activeRegionRef = null;
-          }
-        });
+        };
 
         // Reset active region on waveform click (official pattern)
-        wavesurfer.on('interaction', () => {
+        const handleInteraction = () => {
           activeRegionRef = null;
           setActiveRegion(null);
-        });
+        };
 
-        console.log('✅ Regions setup complete');
+        // Attach event listeners ONCE
+        regions.on('region-in', handleRegionIn);
+        regions.on('region-out', handleRegionOut);
+        regions.on('region-clicked', handleRegionClick);
+        regions.on('region-created', handleRegionCreated);
+        regions.on('region-updated', handleRegionUpdated);
+        wavesurfer.on('interaction', handleInteraction);
+
+        console.log('✅ Regions setup complete with loop functionality');
+        
+        // Store cleanup functions for proper removal
+        return () => {
+          console.log('🧹 Cleaning up region event listeners');
+          regions.off('region-in', handleRegionIn);
+          regions.off('region-out', handleRegionOut);
+          regions.off('region-clicked', handleRegionClick);
+          regions.off('region-created', handleRegionCreated);
+          regions.off('region-updated', handleRegionUpdated);
+          wavesurfer.off('interaction', handleInteraction);
+          isRegionsSetupRef.current = false;
+        };
       } catch (error) {
         console.error('❌ Error setting up regions:', error);
+        isRegionsSetupRef.current = false;
       }
     };
 
+    let cleanup;
+    
     // Wait for decode or setup immediately if ready
     if (wavesurfer.getDuration() > 0) {
-      setupRegions();
+      cleanup = setupRegions();
     } else {
-      wavesurfer.once('decode', setupRegions);
+      wavesurfer.once('decode', () => {
+        cleanup = setupRegions();
+      });
     }
 
     // Cleanup function
     return () => {
-      try {
-        regions.off('region-clicked');
-        regions.off('region-created');
-        regions.off('region-updated');
-        regions.off('region-in');
-        regions.off('region-out');
-        wavesurfer.off('interaction');
-      } catch (error) {
-        console.warn('Region cleanup error:', error);
-      }
+      if (cleanup) cleanup();
     };
-  }, [wavesurfer, isReady, regions, setActiveRegion, addRegion, setStatus, setCurrentTime, onRegionClick, randomColor]);
+  }, [wavesurfer, isReady]); // Removed deps that cause re-runs
+
+  // 🔄 Update ref when state changes
+  useEffect(() => {
+    loopRegionsRef.current = loopRegions;
+  }, [loopRegions]);
+
+  // 🚀 Ultimate Sync System Integration
+  
+  // Professional command queue system
+  const queueMPVCommand = useCallback(async (command, priority = 'normal') => {
+    if (!mpvConnected) return false;
+    
+    return new Promise((resolve, reject) => {
+      const commandObj = {
+        id: `sync-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        command,
+        priority,
+        resolve,
+        reject,
+        timestamp: Date.now()
+      };
+      
+      if (priority === 'high') {
+        commandQueueRef.current.unshift(commandObj);
+      } else {
+        commandQueueRef.current.push(commandObj);
+      }
+      
+      processCommandQueue();
+    });
+  }, [mpvConnected]);
+  
+  // Ultra-fast command processing
+  const processCommandQueue = useCallback(async () => {
+    if (isProcessingRef.current || commandQueueRef.current.length === 0) return;
+    
+    isProcessingRef.current = true;
+    
+    try {
+      while (commandQueueRef.current.length > 0) {
+        const cmd = commandQueueRef.current.shift();
+        
+        try {
+          const response = await fetch('/api/mpv-command', {
+            method: 'POST',
+            headers: { 
+              'Content-Type': 'application/json',
+              'X-Sync-Source': 'ultimate-sync'
+            },
+            body: JSON.stringify({
+              command: cmd.command,
+              source: 'sync-engine',
+              priority: cmd.priority
+            }),
+            signal: AbortSignal.timeout(1000)
+          });
+          
+          if (response.ok) {
+            const result = await response.json();
+            cmd.resolve(result);
+          } else {
+            cmd.reject(new Error(`Command failed: ${response.status}`));
+          }
+        } catch (error) {
+          cmd.reject(error);
+        }
+        
+        await new Promise(resolve => setTimeout(resolve, 2));
+      }
+    } finally {
+      isProcessingRef.current = false;
+    }
+  }, []);
+  
+  // Calculate sync accuracy and drift
+  const calculateSyncAccuracy = useCallback(() => {
+    if (!mpvConnected || !wavesurfer) return 1;
+    
+    const wsTime = wavesurfer.getCurrentTime() || 0;
+    const mpvTime = mpvCurrentTime || 0;
+    const timeDrift = Math.abs(wsTime - mpvTime);
+    
+    // Add to drift history
+    driftHistoryRef.current.push({
+      time: Date.now(),
+      drift: timeDrift,
+      wsTime,
+      mpvTime
+    });
+    
+    if (driftHistoryRef.current.length > 20) {
+      driftHistoryRef.current.shift();
+    }
+    
+    // Update performance stats
+    const avgDrift = driftHistoryRef.current.reduce((sum, d) => sum + d.drift, 0) / driftHistoryRef.current.length;
+    performanceStatsRef.current.avgAccuracy = avgDrift;
+    
+    return timeDrift;
+  }, [mpvConnected, mpvCurrentTime, wavesurfer]);
+  
+  // Sync WaveSurfer to MPV (MPV is master)
+  const syncWaveSurferToMPV = useCallback(async () => {
+    if (!wavesurfer || !mpvConnected || syncModeRef.current !== 'mpv-master') return;
+    
+    try {
+      const wsTime = wavesurfer.getCurrentTime() || 0;
+      const mpvTime = mpvCurrentTime || 0;
+      const wsPlaying = wavesurfer.isPlaying();
+      const timeDrift = Math.abs(wsTime - mpvTime);
+      
+      // Time sync with threshold
+      if (timeDrift > 0.05) {
+        const duration = wavesurfer.getDuration() || 1;
+        wavesurfer.seekTo(mpvTime / duration);
+        performanceStatsRef.current.driftCorrections++;
+        console.log(`🔄 WS←MPV time sync: ${wsTime.toFixed(3)}s → ${mpvTime.toFixed(3)}s`);
+      }
+      
+      // Play state sync
+      if (wsPlaying !== mpvPlaying) {
+        if (mpvPlaying) {
+          wavesurfer.play();
+        } else {
+          wavesurfer.pause();
+        }
+        console.log(`🔄 WS←MPV play state: ${wsPlaying} → ${mpvPlaying}`);
+      }
+      
+      performanceStatsRef.current.syncEvents++;
+      
+    } catch (error) {
+      console.warn('WS←MPV sync error:', error);
+    }
+  }, [wavesurfer, mpvConnected, mpvCurrentTime, mpvPlaying]);
+  
+  // Sync MPV to WaveSurfer (WaveSurfer is master)
+  const syncMPVToWaveSurfer = useCallback(async () => {
+    if (!wavesurfer || !mpvConnected || syncModeRef.current !== 'wavesurfer-master') return;
+    
+    try {
+      const wsTime = wavesurfer.getCurrentTime() || 0;
+      const wsPlaying = wavesurfer.isPlaying();
+      const timeDrift = Math.abs(wsTime - (mpvCurrentTime || 0));
+      
+      // Time sync with threshold
+      if (timeDrift > 0.05) {
+        await queueMPVCommand(['seek', wsTime, 'absolute', 'exact'], 'high');
+        performanceStatsRef.current.driftCorrections++;
+        console.log(`🔄 MPV←WS time sync: ${(mpvCurrentTime || 0).toFixed(3)}s → ${wsTime.toFixed(3)}s`);
+      }
+      
+      // Play state sync
+      if (wsPlaying !== mpvPlaying) {
+        await queueMPVCommand(['set_property', 'pause', !wsPlaying], 'high');
+        console.log(`🔄 MPV←WS play state: ${mpvPlaying} → ${wsPlaying}`);
+      }
+      
+      performanceStatsRef.current.syncEvents++;
+      
+    } catch (error) {
+      console.warn('MPV←WS sync error:', error);
+    }
+  }, [wavesurfer, mpvConnected, mpvCurrentTime, mpvPlaying, queueMPVCommand]);
+  
+  // Master sync mode determination
+  const determineSyncMode = useCallback(() => {
+    if (!mpvConnected) {
+      syncModeRef.current = 'idle';
+      setSyncMode('idle');
+      return;
+    }
+    
+    // Region playback - WaveSurfer is master
+    if (activeRegion) {
+      syncModeRef.current = 'wavesurfer-master';
+      setSyncMode('wavesurfer-master');
+      return;
+    }
+    
+    // Check who initiated the last change
+    const wsTime = wavesurfer?.getCurrentTime() || 0;
+    const mpvTime = mpvCurrentTime || 0;
+    const wsChange = Math.abs(wsTime - lastWsTimeRef.current);
+    const mpvChange = Math.abs(mpvTime - lastMpvTimeRef.current);
+    
+    // If significant change detected, determine master
+    if (wsChange > 0.1) {
+      syncModeRef.current = 'wavesurfer-master';
+      setSyncMode('wavesurfer-master');
+    } else if (mpvChange > 0.1) {
+      syncModeRef.current = 'mpv-master';
+      setSyncMode('mpv-master');
+    }
+    
+    // Update last known times
+    lastWsTimeRef.current = wsTime;
+    lastMpvTimeRef.current = mpvTime;
+    
+  }, [mpvConnected, activeRegion, wavesurfer, mpvCurrentTime]);
+  
+  // Main sync loop
+  const runSyncLoop = useCallback(async () => {
+    if (!syncActiveRef.current || !mpvConnected || !wavesurfer) return;
+    
+    try {
+      // Calculate current sync accuracy
+      const accuracy = calculateSyncAccuracy();
+      setSyncAccuracy(accuracy);
+      setLastSyncTime(Date.now());
+      
+      // Update global sync accuracy
+      updateSyncAccuracy(accuracy);
+      
+      // Determine sync mode
+      determineSyncMode();
+      
+      // Execute appropriate sync direction
+      if (syncModeRef.current === 'wavesurfer-master') {
+        await syncMPVToWaveSurfer();
+      } else if (syncModeRef.current === 'mpv-master') {
+        await syncWaveSurferToMPV();
+      }
+      
+      // Update status
+      if (accuracy < 0.05) {
+        setStatus(`🎯 Perfect Sync: ${(accuracy * 1000).toFixed(0)}ms (${syncModeRef.current})`);
+      } else {
+        setStatus(`⚠️ Sync Drift: ${(accuracy * 1000).toFixed(0)}ms (${syncModeRef.current})`);
+      }
+      
+    } catch (error) {
+      console.error('Sync loop error:', error);
+    }
+  }, [calculateSyncAccuracy, determineSyncMode, syncMPVToWaveSurfer, syncWaveSurferToMPV, mpvConnected, wavesurfer, updateSyncAccuracy, setStatus]);
+  
+  // Start sync system
+  const startSync = useCallback(() => {
+    if (syncActiveRef.current || !mpvConnected || !wavesurfer) return;
+    
+    console.log('🚀 Starting Ultimate Sync System...');
+    
+    syncActiveRef.current = true;
+    setSyncActive(true);
+    
+    // Reset performance stats
+    performanceStatsRef.current = {
+      syncEvents: 0,
+      driftCorrections: 0,
+      avgAccuracy: 0,
+      lastReset: Date.now()
+    };
+    
+    // Start sync loop - 800ms interval
+    syncIntervalRef.current = setInterval(runSyncLoop, 800);
+    
+    setStatus('🎯 Ultimate Sync System Active');
+    
+  }, [mpvConnected, wavesurfer, runSyncLoop, setStatus]);
+  
+  // Stop sync system
+  const stopSync = useCallback(() => {
+    if (!syncActiveRef.current) return;
+    
+    console.log('🛑 Stopping Ultimate Sync System...');
+    
+    syncActiveRef.current = false;
+    setSyncActive(false);
+    syncModeRef.current = 'idle';
+    setSyncMode('idle');
+    
+    if (syncIntervalRef.current) {
+      clearInterval(syncIntervalRef.current);
+      syncIntervalRef.current = null;
+    }
+    
+    // Clear command queue
+    commandQueueRef.current.forEach(cmd => {
+      cmd.reject(new Error('Sync stopped'));
+    });
+    commandQueueRef.current = [];
+    
+    setStatus('Sync system stopped');
+    
+  }, [setStatus]);
+  
+  // Manual sync trigger
+  const triggerManualSync = useCallback(async (direction = 'auto') => {
+    if (!mpvConnected || !wavesurfer) return false;
+    
+    try {
+      if (direction === 'to-mpv' || direction === 'auto') {
+        await syncMPVToWaveSurfer();
+      }
+      if (direction === 'to-wavesurfer' || direction === 'auto') {
+        await syncWaveSurferToMPV();
+      }
+      
+      setStatus(`🎯 Manual sync completed (${direction})`);
+      return true;
+    } catch (error) {
+      console.error('Manual sync failed:', error);
+      return false;
+    }
+  }, [mpvConnected, wavesurfer, syncMPVToWaveSurfer, syncWaveSurferToMPV, setStatus]);
+  
+  // Auto-start/stop based on MPV connection
+  useEffect(() => {
+    if (mpvConnected && wavesurfer && !syncActiveRef.current) {
+      setTimeout(startSync, 1000);
+    } else if (!mpvConnected && syncActiveRef.current) {
+      stopSync();
+    }
+  }, [mpvConnected, wavesurfer, startSync, stopSync]);
 
   // 🎯 Handle wavesurfer ready
   useEffect(() => {
@@ -5051,6 +5657,31 @@ const UltimateWaveSurfer = ({
           }
         },
         
+        // Loop control
+        setLoopRegions: (loop) => {
+          setLoopRegions(loop);
+          loopRegionsRef.current = loop;
+          setStatus(loop ? 'Region looping enabled' : 'Region looping disabled');
+        },
+        
+        getLoopRegions: () => loopRegionsRef.current,
+        
+        // Ultimate Sync API
+        sync: {
+          start: startSync,
+          stop: stopSync,
+          trigger: triggerManualSync,
+          isActive: () => syncActive,
+          getMode: () => syncMode,
+          getAccuracy: () => syncAccuracy,
+          getStats: () => ({
+            syncEvents: performanceStatsRef.current.syncEvents,
+            driftCorrections: performanceStatsRef.current.driftCorrections,
+            avgAccuracy: performanceStatsRef.current.avgAccuracy,
+            commandQueueLength: commandQueueRef.current.length
+          })
+        },
+        
         // Utility
         setVolume: (volume) => {
           try {
@@ -5074,13 +5705,22 @@ const UltimateWaveSurfer = ({
           duration: wavesurfer?.getDuration() || 0,
           currentTime: wavesurfer?.getCurrentTime() || 0,
           isPlaying: wavesurfer?.isPlaying() || false,
-          regionsCount: regions?.getRegions()?.length || 0
+          regionsCount: regions?.getRegions()?.length || 0,
+          loopRegions: loopRegionsRef.current
         })
       };
       
       // Global access for debugging
       if (process.env.NODE_ENV === 'development') {
         window.ultimateWaveSurfer = wavesurfer;
+        window.ultimateSync = {
+          start: startSync,
+          stop: stopSync,
+          trigger: triggerManualSync,
+          active: syncActive,
+          mode: syncMode,
+          accuracy: syncAccuracy
+        };
         console.log('🎯 Ultimate WaveSurfer API ready');
       }
     }
@@ -5153,6 +5793,69 @@ const UltimateWaveSurfer = ({
 
   return (
     <div className={`ultimate-wavesurfer ${className}`}>
+      {/* 🎨 Custom scrollbar styling for both main waveform and minimap */}
+      <style>{`
+        /* Main waveform scrollbar */
+        .waveform-container ::-webkit-scrollbar {
+          height: 10px;
+          width: 10px;
+        }
+        .waveform-container ::-webkit-scrollbar-track {
+          background: #1a1a1a;
+          border-radius: 4px;
+        }
+        .waveform-container ::-webkit-scrollbar-thumb {
+          background: linear-gradient(45deg, #08c3f2, #4a9eff);
+          border-radius: 4px;
+          box-shadow: 0 0 8px rgba(8, 195, 242, 0.6);
+        }
+        .waveform-container ::-webkit-scrollbar-thumb:hover {
+          background: linear-gradient(45deg, #4a9eff, #08c3f2);
+          box-shadow: 0 0 15px rgba(8, 195, 242, 1);
+        }
+        
+        /* Minimap scrollbar - VERY BRIGHT blue glow */
+        .minimap-container ::-webkit-scrollbar {
+          height: 10px;
+          width: 10px;
+        }
+        .minimap-container ::-webkit-scrollbar-track {
+          background: #2a2a2a;
+          border-radius: 4px;
+        }
+        .minimap-container ::-webkit-scrollbar-thumb {
+          background: linear-gradient(45deg, #08c3f2, #4a9eff);
+          border-radius: 4px;
+          /* MUCH stronger shadow - multiple layers for visibility */
+          box-shadow: 
+            0 0 10px rgba(8, 195, 242, 1),
+            0 0 20px rgba(8, 195, 242, 0.8),
+            0 0 30px rgba(8, 195, 242, 0.6),
+            inset 0 0 10px rgba(255, 255, 255, 0.2);
+          border: 2px solid rgba(8, 195, 242, 0.8);
+        }
+        .minimap-container ::-webkit-scrollbar-thumb:hover {
+          background: linear-gradient(45deg, #4a9eff, #08c3f2);
+          /* SUPER bright hover shadow */
+          box-shadow: 
+            0 0 15px rgba(8, 195, 242, 1),
+            0 0 30px rgba(8, 195, 242, 1),
+            0 0 45px rgba(8, 195, 242, 0.8),
+            inset 0 0 15px rgba(255, 255, 255, 0.3);
+          border: 2px solid rgba(8, 195, 242, 1);
+        }
+        
+        /* Sync pulse animation */
+        @keyframes syncPulse {
+          0%, 100% {
+            opacity: 1;
+          }
+          50% {
+            opacity: 0.5;
+          }
+        }
+      `}</style>
+
       {/* 🎯 Main waveform container */}
       <div 
         ref={containerRef} 
@@ -5175,43 +5878,125 @@ const UltimateWaveSurfer = ({
           width: '100%',
           marginTop: '10px',
           borderRadius: '4px',
-          overflow: 'hidden',
+          overflow: 'auto', // Enable scrolling
           backgroundColor: '#2a2a2a',
           border: '1px solid #333'
         }}
       />
-      
-      {/* 📊 Real-time info display */}
+
+      {/* 🎯 Ultimate Single Row Controls - All controls in one compact row */}
       {isReady && (
-        <div className="wavesurfer-info" style={{
+        <div className="region-controls" style={{
+          marginTop: '15px',
+          padding: '12px',
+          backgroundColor: '#333',
+          borderRadius: '6px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '15px'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+            {/* Loop Regions Checkbox */}
+            <label style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              color: '#fff',
+              fontSize: '0.9rem',
+              cursor: 'pointer'
+            }}>
+              <input
+                type="checkbox"
+                checked={loopRegions}
+                onChange={(e) => {
+                  const newValue = e.target.checked;
+                  setLoopRegions(newValue);
+                  loopRegionsRef.current = newValue;
+                  setStatus(newValue ? '🔄 Region looping enabled' : '⏸️ Region looping disabled');
+                  console.log('🔄 Loop regions toggled to:', newValue);
+                }}
+                style={{
+                  accentColor: '#4a9eff',
+                  width: '16px',
+                  height: '16px'
+                }}
+              />
+              <span>🔄 Loop Regions</span>
+            </label>
+
+            {/* Region Info */}
+            <span style={{ 
+              color: '#4caf50', 
+              fontSize: '0.85rem',
+              fontWeight: '500'
+            }}>
+              📊 Regions: {regions?.getRegions()?.length || 0}
+            </span>
+          </div>
+
+          {/* Clear All Button */}
+          <button
+            onClick={() => {
+              try {
+                regions.clearRegions();
+                setActiveRegion(null);
+                setStatus('All regions cleared');
+              } catch (error) {
+                console.error('Error clearing regions:', error);
+              }
+            }}
+            style={{
+              backgroundColor: '#ff9800',
+              color: 'white',
+              border: 'none',
+              padding: '8px 16px',
+              borderRadius: '6px',
+              fontSize: '0.85rem',
+              fontWeight: '600',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}
+            onMouseEnter={(e) => {
+              e.target.style.backgroundColor = '#f57c00';
+              e.target.style.transform = 'translateY(-1px)';
+            }}
+            onMouseLeave={(e) => {
+              e.target.style.backgroundColor = '#ff9800';
+              e.target.style.transform = 'translateY(0)';
+            }}
+          >
+            <span>🗑️</span>
+            Clear All
+          </button>
+        </div>
+      )}
+      
+      {/* 📊 Minimal status - Only time and drag hint */}
+      {isReady && (
+        <div className="wavesurfer-status" style={{
           marginTop: '10px',
           padding: '8px 12px',
-          backgroundColor: '#333',
+          backgroundColor: '#2a2a2a',
           borderRadius: '4px',
-          fontSize: '0.9rem',
-          color: '#fff',
+          fontSize: '0.85rem',
+          color: '#ccc',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
           flexWrap: 'wrap',
-          gap: '10px'
+          gap: '15px'
         }}>
           <span>
             ⏱️ {formatTime(wsCurrentTime)} / {formatTime(wavesurfer?.getDuration() || 0)}
           </span>
-          <span>
-            🎵 Rate: {playbackRate.toFixed(1)}x | 🔍 Zoom: {zoomLevel}px/s
-          </span>
-          <span className={`status ${wavesurfer?.isPlaying() ? 'playing' : 'paused'}`}>
-            {wavesurfer?.isPlaying() ? '▶️ Playing' : '⏸️ Paused'}
-          </span>
-          {activeRegion && (
-            <span style={{ color: '#4a9eff' }}>
-              📊 Region: {activeRegion.start.toFixed(2)}s - {activeRegion.end.toFixed(2)}s
-            </span>
-          )}
-          <span style={{ color: '#4caf50', fontSize: '0.8rem' }}>
-            🎨 Regions: {regions?.getRegions()?.length || 0} | Drag to create!
+          
+          <span style={{ color: '#888', fontSize: '0.75rem' }}>
+            🎨 Drag to create regions
           </span>
         </div>
       )}
@@ -5373,768 +6158,6 @@ const UploadPanel = ({ onFileUpload }) => {
 };
 
 export default UploadPanel;
-
-================================================================================
-File: src/components/WaveSurferComponent.js
-================================================================================
-
-/**
- * File: src/components/WaveSurferComponent.js
- * Description: 🎯 PERFECT EXACT MIRRORING WaveSurfer - Zero Sync Conflicts
- * 
- * Version: v6.0.0 (2025-06-11) - CRITICAL FIX - EXACT MIRRORING
- * ✅ FIXED: All sync conflicts with leader/follower pattern
- * ✅ FIXED: Infinite loops with smart lock system
- * ✅ FIXED: Audio popping and crackling
- * ✅ OPTIMIZED: Frame-accurate synchronization (16ms precision)
- * ✅ OPTIMIZED: Perfect bidirectional mirroring
- * ✅ OPTIMIZED: Zero memory leaks with perfect cleanup
- */
-
-import React, { useRef, useState, useEffect, useCallback, useMemo } from 'react';
-import { useWavesurfer } from '@wavesurfer/react';
-import { usePerfectMirrorSync } from './PerfectMirrorSync';
-import '../assets/styles/main.css';
-
-const WaveSurferComponent = ({ 
-  audioFile, 
-  isPlaying, 
-  loopRegions = true,
-  zoomLevel = 100,
-  playbackSpeed = 1.0,
-  isMuted = false,
-  onPlayPause, 
-  onReady,
-  onRegionActivated
-}) => {
-  // 🎯 PERFECT Refs (stable, leak-free)
-  const containerRef = useRef(null);
-  const minimapRef = useRef(null);
-  const activeRegionRef = useRef(null);
-  const cleanupFunctionsRef = useRef([]);
-  const isInitializedRef = useRef(false);
-  const audioUrlRef = useRef(null);
-  const pluginsRef = useRef(null);
-  const lastZoomRef = useRef(zoomLevel);
-  const lastSpeedRef = useRef(playbackSpeed);
-  
-  // 🚀 MINIMAL State (optimized for performance)
-  const [loading, setLoading] = useState(true);
-  const [isAudioLoaded, setIsAudioLoaded] = useState(false);
-  const [audioUrl, setAudioUrl] = useState(null);
-  
-  // 🎯 PERFECT Mirror Sync Integration
-  const {
-    attachToWaveSurfer,
-    connectToMPV,
-    updateMPVState,
-    getDebugInfo
-  } = usePerfectMirrorSync();
-  
-  // 🚀 SMART Audio Processing (prevents unnecessary re-initialization)
-  const processedAudioFile = useMemo(() => {
-    if (!audioFile) return null;
-    
-    const fileId = audioFile instanceof File 
-      ? `${audioFile.name}-${audioFile.size}-${audioFile.lastModified}`
-      : audioFile;
-    
-    return { file: audioFile, id: fileId };
-  }, [audioFile]);
-  
-  // 🎯 ULTRA-FAST WaveSurfer with Perfect Mirror Integration
-  const { wavesurfer, currentTime, isReady } = useWavesurfer({
-    container: containerRef,
-    height: 180,
-    waveColor: '#b8b8b8',
-    progressColor: '#08c3f2',
-    cursorColor: '#ff5722',
-    cursorWidth: 2,
-    minPxPerSec: 100,
-    url: audioUrl,
-    normalize: true,
-    autoScroll: true,
-    autoCenter: true,
-  });
-
-  // 🧹 PERFECT Cleanup System
-  const addCleanupFunction = useCallback((cleanupFn) => {
-    cleanupFunctionsRef.current.push(cleanupFn);
-  }, []);
-  
-  const executeAllCleanups = useCallback(() => {
-    console.log(`🧹 WS: Executing ${cleanupFunctionsRef.current.length} cleanup functions`);
-    
-    cleanupFunctionsRef.current.forEach((cleanup, index) => {
-      try {
-        cleanup();
-      } catch (error) {
-        console.error(`❌ WS Cleanup ${index + 1} failed:`, error);
-      }
-    });
-    
-    cleanupFunctionsRef.current = [];
-  }, []);
-  
-  // 🎯 SMART MPV Command System (for mirror sync)
-  const sendMPVCommand = useCallback(async (commandArray, source = 'mirror') => {
-    try {
-      const response = await fetch('/api/mpv-command', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ command: commandArray, source })
-      });
-      
-      if (response.ok) {
-        const result = await response.json();
-        return result.success;
-      }
-      return false;
-    } catch (error) {
-      console.error("MPV command error:", error);
-      return false;
-    }
-  }, []);
-  
-  // 🎯 REGION Management (with perfect mirror sync)
-  const handleRegionClick = useCallback((region, e) => {
-    e.stopPropagation();
-    
-    activeRegionRef.current = region;
-    
-    // Use perfect mirror sync for region playback
-    if (wavesurfer?.perfectMirror) {
-      wavesurfer.perfectMirror.syncToTime(region.start);
-      
-      // Play if not already playing
-      if (!wavesurfer.isPlaying()) {
-        wavesurfer.play();
-      }
-    } else {
-      // Fallback for regions
-      region.play(true);
-    }
-    
-    if (onPlayPause) onPlayPause(true);
-    if (onRegionActivated) onRegionActivated(region);
-  }, [wavesurfer, onPlayPause, onRegionActivated]);
-  
-  // 🚀 OPTIMIZED Plugin Setup (perfect cleanup, exact mirror integration)
-  const setupPlugins = useCallback(async () => {
-    if (!wavesurfer || !isReady || isInitializedRef.current) return;
-    
-    console.log("🚀 Setting up plugins with perfect mirror sync...");
-    isInitializedRef.current = true;
-    
-    try {
-      // Clear minimap container
-      if (minimapRef.current) {
-        minimapRef.current.innerHTML = '';
-      }
-      
-      // 🎯 SMART Plugin Imports (cached)
-      if (!pluginsRef.current) {
-        const [
-          { default: Timeline },
-          { default: Spectrogram },
-          { default: Regions },
-          { default: Minimap },
-          { default: Hover }
-        ] = await Promise.all([
-          import('wavesurfer.js/dist/plugins/timeline.js'),
-          import('wavesurfer.js/dist/plugins/spectrogram.js'),
-          import('wavesurfer.js/dist/plugins/regions.js'),
-          import('wavesurfer.js/dist/plugins/minimap.js'),
-          import('wavesurfer.js/dist/plugins/hover.js')
-        ]);
-        
-        pluginsRef.current = { Timeline, Spectrogram, Regions, Minimap, Hover };
-      }
-      
-      const { Timeline, Spectrogram, Regions, Minimap, Hover } = pluginsRef.current;
-      
-      // 🎯 Create plugins
-      const regionsPlugin = Regions.create();
-      const timelinePlugin = Timeline.create({
-        height: 30,
-        timeInterval: 1,
-        primaryColor: '#ffffff',
-        secondaryColor: '#aaaaaa',
-        primaryFontColor: '#ffffff',
-        secondaryFontColor: '#dddddd',
-      });
-      const spectrogramPlugin = Spectrogram.create({
-        labels: true,
-        height: 350,
-        splitChannels: false,
-        colorMap: 'roseus',
-        frequencyMax: 8000,
-        frequencyMin: 0,
-        fftSamples: 512,
-        noverlap: 0,
-      });
-      const hoverPlugin = Hover.create({
-        lineColor: '#ff5722',
-        lineWidth: 2,
-        labelBackground: '#111111',
-        labelColor: '#ffffff',
-      });
-      const minimapPlugin = Minimap.create({
-        container: minimapRef.current,
-        height: 40,
-        waveColor: '#b8b8b8',
-        progressColor: '#08c3f2',
-      });
-      
-      // 🚀 Register plugins
-      wavesurfer.registerPlugin(regionsPlugin);
-      wavesurfer.registerPlugin(timelinePlugin);
-      wavesurfer.registerPlugin(spectrogramPlugin);
-      wavesurfer.registerPlugin(hoverPlugin);
-      wavesurfer.registerPlugin(minimapPlugin);
-      
-      // Enable drag selection
-      regionsPlugin.enableDragSelection({
-        color: 'rgba(70, 130, 180, 0.3)',
-      });
-      
-      // 🎯 PERFECT Region Event Handlers (with mirror sync)
-      const regionInHandler = (region) => {
-        activeRegionRef.current = region;
-        
-        // Use perfect mirror sync for region entry
-        if (wavesurfer.perfectMirror) {
-          wavesurfer.perfectMirror.syncToTime(region.start);
-        }
-      };
-      
-      const regionOutHandler = (region) => {
-        if (activeRegionRef.current === region && loopRegions) {
-          region.play();
-          
-          // Use perfect mirror sync for region loop
-          if (wavesurfer.perfectMirror) {
-            wavesurfer.perfectMirror.syncToTime(region.start);
-          }
-        } else if (activeRegionRef.current === region) {
-          activeRegionRef.current = null;
-        }
-      };
-      
-      const regionUpdatedHandler = (region) => {
-        activeRegionRef.current = region;
-        
-        // Use perfect mirror sync for region updates
-        if (wavesurfer.perfectMirror) {
-          wavesurfer.perfectMirror.syncToTime(region.start);
-        }
-        
-        if (onRegionActivated) onRegionActivated(region);
-      };
-      
-      // 🎯 NO DIRECT EVENT HANDLERS - Let Perfect Mirror Sync handle everything
-      // This prevents sync conflicts and infinite loops
-      
-      // Attach region events
-      regionsPlugin.on('region-in', regionInHandler);
-      regionsPlugin.on('region-out', regionOutHandler);
-      regionsPlugin.on('region-clicked', handleRegionClick);
-      regionsPlugin.on('region-updated', regionUpdatedHandler);
-      
-      // 🧹 Add cleanup for all plugins and events
-      addCleanupFunction(() => {
-        try {
-          // Remove event listeners
-          regionsPlugin.off('region-in', regionInHandler);
-          regionsPlugin.off('region-out', regionOutHandler);
-          regionsPlugin.off('region-clicked', handleRegionClick);
-          regionsPlugin.off('region-updated', regionUpdatedHandler);
-          
-          // Unregister plugins
-          wavesurfer.unRegisterPlugin(regionsPlugin);
-          wavesurfer.unRegisterPlugin(timelinePlugin);
-          wavesurfer.unRegisterPlugin(spectrogramPlugin);
-          wavesurfer.unRegisterPlugin(hoverPlugin);
-          wavesurfer.unRegisterPlugin(minimapPlugin);
-          
-          console.log("✅ All plugins and events cleaned up");
-        } catch (error) {
-          console.warn("Plugin cleanup warning:", error);
-        }
-      });
-      
-      // 🎯 Add utility methods to wavesurfer
-      wavesurfer.regions = regionsPlugin;
-      wavesurfer.getActiveRegion = () => activeRegionRef.current;
-      
-      wavesurfer.clearAllRegions = () => {
-        try {
-          regionsPlugin.clearRegions();
-          activeRegionRef.current = null;
-          return true;
-        } catch (error) {
-          console.error("Clear regions error:", error);
-          return false;
-        }
-      };
-      
-      wavesurfer.createRegion = (options = {}) => {
-        try {
-          const regionOptions = {
-            color: 'rgba(70, 130, 180, 0.3)',
-            drag: true,
-            resize: true,
-            ...options
-          };
-          
-          const region = regionsPlugin.addRegion(regionOptions);
-          
-          // Use perfect mirror sync for new regions
-          if (regionOptions.start !== undefined && wavesurfer.perfectMirror) {
-            wavesurfer.perfectMirror.syncToTime(regionOptions.start);
-          }
-          
-          return region;
-        } catch (error) {
-          console.error("Create region error:", error);
-          return null;
-        }
-      };
-      
-      // 🎯 CRITICAL: Attach Perfect Mirror Sync AFTER plugins are ready
-      attachToWaveSurfer(wavesurfer);
-      
-      setLoading(false);
-      setIsAudioLoaded(true);
-      
-      if (onReady) onReady(wavesurfer);
-      
-      console.log("🎉 Plugins setup completed with Perfect Mirror Sync!");
-      
-    } catch (error) {
-      console.error("❌ Plugin setup failed:", error);
-      isInitializedRef.current = false;
-      setLoading(false);
-    }
-  }, [wavesurfer, isReady, onReady, addCleanupFunction, handleRegionClick, 
-      loopRegions, onRegionActivated, attachToWaveSurfer]);
-  
-  // 🚀 SMART Audio File Processing (leak-free)
-  useEffect(() => {
-    if (!processedAudioFile) {
-      // Clean up previous audio
-      if (audioUrlRef.current?.startsWith?.('blob:')) {
-        URL.revokeObjectURL(audioUrlRef.current);
-        console.log("🧹 Previous blob URL cleaned up");
-      }
-      
-      setAudioUrl(null);
-      audioUrlRef.current = null;
-      setLoading(true);
-      setIsAudioLoaded(false);
-      isInitializedRef.current = false;
-      activeRegionRef.current = null;
-      executeAllCleanups();
-      return;
-    }
-    
-    // Skip if same file
-    if (audioUrlRef.current && processedAudioFile.id === audioUrlRef.current) {
-      return;
-    }
-    
-    // Clean up previous audio
-    if (audioUrlRef.current?.startsWith?.('blob:')) {
-      URL.revokeObjectURL(audioUrlRef.current);
-    }
-    
-    // Reset states
-    setLoading(true);
-    setIsAudioLoaded(false);
-    isInitializedRef.current = false;
-    activeRegionRef.current = null;
-    executeAllCleanups();
-    
-    // Process new file
-    if (processedAudioFile.file instanceof File) {
-      const newUrl = URL.createObjectURL(processedAudioFile.file);
-      setAudioUrl(newUrl);
-      audioUrlRef.current = newUrl;
-      
-      // Add blob cleanup
-      addCleanupFunction(() => {
-        URL.revokeObjectURL(newUrl);
-        console.log("🧹 Blob URL cleaned up");
-      });
-      
-      console.log("📁 New blob URL created:", newUrl);
-    } else {
-      setAudioUrl(processedAudioFile.file);
-      audioUrlRef.current = processedAudioFile.file;
-    }
-    
-  }, [processedAudioFile, executeAllCleanups, addCleanupFunction]);
-  
-  // 🚀 TRIGGER Plugin Setup
-  useEffect(() => {
-    if (wavesurfer && isReady && audioUrl && !isInitializedRef.current) {
-      const timer = setTimeout(setupPlugins, 100);
-      
-      addCleanupFunction(() => {
-        clearTimeout(timer);
-      });
-      
-      return () => clearTimeout(timer);
-    }
-  }, [wavesurfer, isReady, audioUrl, setupPlugins, addCleanupFunction]);
-  
-  // 🎯 MPV Connection Integration (for perfect mirror sync)
-  useEffect(() => {
-    if (!wavesurfer || !isReady || !isAudioLoaded || !wavesurfer.perfectMirror) return;
-    
-    let connectionCheckInterval;
-    
-    const checkMPVConnection = async () => {
-      try {
-        const response = await fetch('/api/mpv-status');
-        
-        if (response.ok) {
-          const status = await response.json();
-          
-          if (status.isConnected) {
-            // Connect perfect mirror sync to MPV
-            connectToMPV(sendMPVCommand);
-            
-            // Update MPV state for sync monitoring
-            updateMPVState(status);
-            
-            console.log("🎯 Perfect Mirror Sync connected to MPV");
-          }
-        }
-      } catch (error) {
-        console.warn("MPV connection check failed:", error);
-      }
-    };
-    
-    // Start monitoring
-    checkMPVConnection();
-    connectionCheckInterval = setInterval(checkMPVConnection, 3000);
-    
-    // Add cleanup
-    addCleanupFunction(() => {
-      if (connectionCheckInterval) {
-        clearInterval(connectionCheckInterval);
-      }
-    });
-    
-    return () => {
-      if (connectionCheckInterval) {
-        clearInterval(connectionCheckInterval);
-      }
-    };
-    
-  }, [wavesurfer, isReady, isAudioLoaded, connectToMPV, sendMPVCommand, 
-      updateMPVState, addCleanupFunction]);
-  
-  // 🎯 PERFECT Playback Control (via mirror sync)
-  useEffect(() => {
-    if (!wavesurfer || !isReady || !isAudioLoaded || !wavesurfer.perfectMirror) return;
-    
-    try {
-      const wsIsPlaying = wavesurfer.isPlaying();
-      
-      if (isPlaying && !wsIsPlaying) {
-        wavesurfer.play();
-      } else if (!isPlaying && wsIsPlaying) {
-        wavesurfer.pause();
-      }
-    } catch (error) {
-      console.error("Playback sync error:", error);
-    }
-  }, [isPlaying, wavesurfer, isReady, isAudioLoaded]);
-  
-  // 🚀 INSTANT Zoom Control
-  useEffect(() => {
-    if (!isAudioLoaded || !isReady || !wavesurfer) return;
-    
-    if (lastZoomRef.current !== zoomLevel) {
-      lastZoomRef.current = zoomLevel;
-      try {
-        wavesurfer.zoom(zoomLevel);
-      } catch (error) {
-        console.error("Zoom error:", error);
-      }
-    }
-  }, [zoomLevel, isAudioLoaded, isReady, wavesurfer]);
-  
-  // 🎯 PERFECT Speed Control (via mirror sync)
-  useEffect(() => {
-    if (!wavesurfer || !isReady || !isAudioLoaded) return;
-    
-    if (lastSpeedRef.current !== playbackSpeed) {
-      lastSpeedRef.current = playbackSpeed;
-      
-      try {
-        wavesurfer.setPlaybackRate(playbackSpeed);
-        
-        // Sync speed through perfect mirror
-        if (wavesurfer.perfectMirror) {
-          // Speed sync is handled by the mirror system
-        }
-      } catch (error) {
-        console.error("Speed sync error:", error);
-      }
-    }
-  }, [playbackSpeed, wavesurfer, isReady, isAudioLoaded]);
-  
-  // 🔇 INSTANT Mute Control (WaveSurfer only - MPV audio stays active)
-  useEffect(() => {
-    if (!wavesurfer || !isReady || !isAudioLoaded) return;
-    
-    try {
-      wavesurfer.setVolume(isMuted ? 0 : 1);
-    } catch (error) {
-      console.error("Volume error:", error);
-    }
-  }, [isMuted, wavesurfer, isReady, isAudioLoaded]);
-  
-  // 🎯 PERFECT Play/Pause Handler (via mirror sync)
-  const handlePlayPause = useCallback(() => {
-    if (!wavesurfer || !isReady || !isAudioLoaded) return;
-    
-    try {
-      const currentlyPlaying = wavesurfer.isPlaying();
-      
-      if (activeRegionRef.current && wavesurfer.perfectMirror) {
-        // Use perfect mirror sync for region playback
-        wavesurfer.perfectMirror.syncToTime(activeRegionRef.current.start);
-        
-        if (!currentlyPlaying) {
-          wavesurfer.play();
-        }
-      } else {
-        // Normal playback
-        wavesurfer.playPause();
-      }
-      
-      if (onPlayPause) {
-        onPlayPause(!currentlyPlaying);
-      }
-    } catch (error) {
-      console.error("Play/pause error:", error);
-    }
-  }, [wavesurfer, isReady, isAudioLoaded, onPlayPause]);
-  
-  // 🎯 PERFECT Keyboard Shortcuts (via mirror sync)
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (!wavesurfer || !isReady || !isAudioLoaded) return;
-      
-      // Ignore if input is focused
-      if (document.activeElement.tagName === 'INPUT') return;
-      
-      switch (e.code) {
-        case 'Space':
-          e.preventDefault();
-          handlePlayPause();
-          break;
-          
-        case 'ArrowLeft':
-          if (e.ctrlKey) {
-            e.preventDefault();
-            const currentTime = wavesurfer.getCurrentTime();
-            const newTime = Math.max(0, currentTime - 5);
-            
-            // Use perfect mirror sync
-            if (wavesurfer.perfectMirror) {
-              wavesurfer.perfectMirror.syncToTime(newTime);
-            } else {
-              const duration = wavesurfer.getDuration();
-              if (duration > 0) {
-                wavesurfer.seekTo(newTime / duration);
-              }
-            }
-          }
-          break;
-          
-        case 'ArrowRight':
-          if (e.ctrlKey) {
-            e.preventDefault();
-            const currentTime = wavesurfer.getCurrentTime();
-            const duration = wavesurfer.getDuration();
-            if (duration > 0) {
-              const newTime = Math.min(duration, currentTime + 5);
-              
-              // Use perfect mirror sync
-              if (wavesurfer.perfectMirror) {
-                wavesurfer.perfectMirror.syncToTime(newTime);
-              } else {
-                wavesurfer.seekTo(newTime / duration);
-              }
-            }
-          }
-          break;
-          
-        case 'Home':
-          e.preventDefault();
-          if (wavesurfer.perfectMirror) {
-            wavesurfer.perfectMirror.syncToTime(0);
-          } else {
-            wavesurfer.seekTo(0);
-          }
-          break;
-          
-        case 'End':
-          e.preventDefault();
-          const duration = wavesurfer.getDuration();
-          if (duration > 0) {
-            if (wavesurfer.perfectMirror) {
-              wavesurfer.perfectMirror.syncToTime(duration * 0.99);
-            } else {
-              wavesurfer.seekTo(0.99);
-            }
-          }
-          break;
-          
-        default:
-          break;
-      }
-    };
-    
-    document.addEventListener('keydown', handleKeyDown);
-    
-    addCleanupFunction(() => {
-      document.removeEventListener('keydown', handleKeyDown);
-    });
-    
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [handlePlayPause, wavesurfer, isReady, isAudioLoaded, addCleanupFunction]);
-  
-  // 🧹 MASTER Cleanup (prevents ALL memory leaks)
-  useEffect(() => {
-    return () => {
-      console.log("🧹 WaveSurfer MASTER CLEANUP starting...");
-      
-      // Execute all cleanup functions
-      executeAllCleanups();
-      
-      // Clean up audio URL
-      if (audioUrlRef.current?.startsWith?.('blob:')) {
-        URL.revokeObjectURL(audioUrlRef.current);
-        audioUrlRef.current = null;
-      }
-      
-      // Reset refs
-      activeRegionRef.current = null;
-      isInitializedRef.current = false;
-      
-      console.log("✅ WaveSurfer MASTER CLEANUP completed!");
-    };
-  }, [executeAllCleanups]);
-  
-  return (
-    <div className="waveform-wrapper">
-      {/* 🎯 PERFECT Waveform Container */}
-      <div id="waveform-container" ref={containerRef} style={{
-        width: '100%',
-        marginBottom: '20px',
-        backgroundColor: '#1a1a1a',
-        borderRadius: '5px',
-        boxShadow: '0 4px 10px rgba(0, 0, 0, 0.3)',
-        position: 'relative',
-        height: '560px',
-        overflow: 'visible'
-      }}>
-        {/* Loading spinner overlay */}
-        {loading && (
-          <div id="spectrogram-loading" className="loading-container">
-            <div className="simple-spinner"></div>
-            <div className="loading-text">Loading Audio...</div>
-          </div>
-        )}
-        
-        {/* Message when no audio is loaded */}
-        {!loading && !isAudioLoaded && (
-          <div style={{
-            position: 'absolute',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            textAlign: 'center',
-            color: '#6c757d'
-          }}>
-            <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>
-              <i className="fas fa-music"></i>
-            </div>
-            <h3>No Audio Loaded</h3>
-            <p>Upload an audio file to visualize the waveform and spectrogram.</p>
-          </div>
-        )}
-      </div>
-      
-      {/* 🎯 PERFECT Minimap */}
-      <div id="minimap" ref={minimapRef} style={{
-        width: '100%',
-        height: '40px',
-        marginBottom: '20px',
-        backgroundColor: '#1a1a1a',
-        borderRadius: '5px',
-        boxShadow: '0 4px 10px rgba(0, 0, 0, 0.3)'
-      }}></div>
-      
-      {/* 🎯 PERFECT Time Display with Mirror Sync Status */}
-      {isReady && isAudioLoaded && (
-        <div className="current-time" style={{ textAlign: 'center', marginBottom: '10px' }}>
-          Time: {formatTime(currentTime)} / {formatTime(wavesurfer?.getDuration() || 0)}
-          {wavesurfer?.perfectMirror?.isConnected() && (
-            <span style={{ marginLeft: '15px', color: '#4ecdc4', fontSize: '0.8rem' }}>
-              🎯 Perfect Mirror Sync Active
-            </span>
-          )}
-          {wavesurfer?.perfectMirror && (
-            <span style={{ marginLeft: '10px', color: '#0dcaf0', fontSize: '0.7rem' }}>
-              Accuracy: {(wavesurfer.perfectMirror.getSyncAccuracy() * 1000).toFixed(1)}ms
-            </span>
-          )}
-        </div>
-      )}
-      
-      {/* 🎯 Debug Info (development only) */}
-      {process.env.NODE_ENV === 'development' && wavesurfer?.perfectMirror && (
-        <div style={{
-          position: 'fixed',
-          top: '10px',
-          right: '10px',
-          background: 'rgba(0,0,0,0.9)',
-          color: '#00ff00',
-          padding: '8px 12px',
-          borderRadius: '5px',
-          fontSize: '0.7rem',
-          fontFamily: 'monospace',
-          maxWidth: '300px'
-        }}>
-          <div>🎯 Mirror Sync Debug:</div>
-          <div>Leader: {getDebugInfo().syncMode}</div>
-          <div>Drift: {(getDebugInfo().drift * 1000).toFixed(1)}ms</div>
-          <div>Events: {getDebugInfo().stats?.syncEvents || 0}</div>
-          <div>Corrections: {getDebugInfo().stats?.driftCorrections || 0}</div>
-        </div>
-      )}
-    </div>
-  );
-};
-
-// 🎯 PERFECT Helper function
-const formatTime = (seconds) => {
-  if (!seconds && seconds !== 0) return '--:--';
-  const min = Math.floor(seconds / 60);
-  const sec = Math.floor(seconds % 60);
-  return `${min.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
-};
-
-export default WaveSurferComponent;
 
 ================================================================================
 File: src/index.js
