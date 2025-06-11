@@ -1,4 +1,4 @@
-// src/components/UltimateMPVController.js
+// src/components/UltimateMPVController.js - Updated with Single Row Layout & Combined Play/Pause
 import React, { useEffect, useCallback, useRef } from 'react';
 import { useAudioSyncStore } from '../store/audioSyncStore';
 
@@ -281,71 +281,59 @@ const UltimateMPVController = ({
     }, 800); // 800ms interval for smooth sync
   }, [mpvConnected, setMpvState]);
   
-  // 🎯 Bidirectional sync - WaveSurfer to MPV
-  useEffect(() => {
-    if (!mpvConnected) return;
-    
-    const syncToMPV = async () => {
-      try {
-        // Sync time position with high precision
-        await queueCommand(['seek', currentTime, 'absolute'], 'high');
-        
-        // Sync play state
-        await queueCommand(['set_property', 'pause', !isPlaying], 'high');
-        
-        // Sync playback rate
-        await queueCommand(['set_property', 'speed', playbackRate], 'normal');
-        
-      } catch (error) {
-        console.warn('WaveSurfer to MPV sync failed:', error);
-      }
-    };
-    
-    // Debounce sync to prevent command flooding
-    const debounceTimer = setTimeout(syncToMPV, 100);
-    return () => clearTimeout(debounceTimer);
-  }, [currentTime, isPlaying, playbackRate, mpvConnected, queueCommand]);
-  
-  // 🎵 Region playback sync
-  useEffect(() => {
-    if (!mpvConnected || !activeRegion) return;
-    
-    const playRegion = async () => {
-      try {
-        console.log(`🎵 Playing region: ${activeRegion.start}s - ${activeRegion.end}s`);
-        
-        // Seek to region start with frame accuracy
-        await queueCommand(['seek', activeRegion.start, 'absolute', 'exact'], 'high');
-        
-        // Start playback if not already playing
-        if (!isPlaying) {
-          await queueCommand(['set_property', 'pause', false], 'high');
-        }
-        
-        setStatus(`🎵 Playing region: ${activeRegion.start.toFixed(2)}s - ${activeRegion.end.toFixed(2)}s`);
-      } catch (error) {
-        console.warn('Region playback failed:', error);
-      }
-    };
-    
-    playRegion();
-  }, [activeRegion, mpvConnected, isPlaying, queueCommand, setStatus]);
-  
   // 🎮 Control methods for UI
   const controls = {
-    play: () => queueCommand(['set_property', 'pause', false], 'high'),
-    pause: () => queueCommand(['set_property', 'pause', true], 'high'),
-    stop: () => Promise.all([
-      queueCommand(['set_property', 'pause', true], 'high'),
-      queueCommand(['seek', 0, 'absolute'], 'high')
-    ]),
-    seekTo: (time) => queueCommand(['seek', time, 'absolute', 'exact'], 'high'),
-    seekRelative: (seconds) => queueCommand(['seek', seconds, 'relative'], 'high'),
-    setVolume: (volume) => queueCommand(['set_property', 'volume', volume]),
-    setSpeed: (speed) => queueCommand(['set_property', 'speed', speed]),
-    toggleMute: () => queueCommand(['cycle', 'mute']),
-    toggleFullscreen: () => queueCommand(['cycle', 'fullscreen']),
-    screenshot: () => queueCommand(['screenshot'])
+    playPause: async () => {
+      try {
+        await queueCommand(['cycle', 'pause'], 'high');
+        console.log('🎮 MPV play/pause toggled');
+      } catch (error) {
+        console.error('Play/pause error:', error);
+      }
+    },
+    stop: async () => {
+      try {
+        await Promise.all([
+          queueCommand(['set_property', 'pause', true], 'high'),
+          queueCommand(['seek', 0, 'absolute'], 'high')
+        ]);
+        console.log('🎮 MPV stopped');
+      } catch (error) {
+        console.error('Stop error:', error);
+      }
+    },
+    seekRelative: async (seconds) => {
+      try {
+        await queueCommand(['seek', seconds, 'relative'], 'high');
+        console.log(`🎮 MPV seek ${seconds}s`);
+      } catch (error) {
+        console.error('Seek error:', error);
+      }
+    },
+    setVolume: async (volume) => {
+      try {
+        await queueCommand(['set_property', 'volume', volume]);
+        console.log(`🎮 MPV volume: ${volume}`);
+      } catch (error) {
+        console.error('Volume error:', error);
+      }
+    },
+    toggleMute: async () => {
+      try {
+        await queueCommand(['cycle', 'mute']);
+        console.log('🎮 MPV mute toggled');
+      } catch (error) {
+        console.error('Mute error:', error);
+      }
+    },
+    toggleFullscreen: async () => {
+      try {
+        await queueCommand(['cycle', 'fullscreen']);
+        console.log('🎮 MPV fullscreen toggled');
+      } catch (error) {
+        console.error('Fullscreen error:', error);
+      }
+    }
   };
   
   // 🧹 Cleanup system
@@ -376,86 +364,328 @@ const UltimateMPVController = ({
   
   return (
     <div className="ultimate-mpv-controller">
-      {/* 🚀 Launch button */}
-      <button 
-        className={`mpv-launch ${mpvConnected ? 'connected' : ''}`}
-        onClick={launchMPV}
-        disabled={!serverFilePathRef.current || mpvConnected}
-        title={mpvConnected ? "Ultimate MPV Connected & Synced!" : "Launch Ultimate MPV Player"}
-      >
-        {mpvConnected ? '🎯 MPV SYNCED' : '🚀 LAUNCH MPV'}
-      </button>
-      
-      {/* 🎮 Control buttons - only show when connected */}
-      {mpvConnected && (
-        <div className="mpv-controls">
-          <button onClick={controls.play} title="Play" className="control-btn">
-            <i className="fas fa-play"></i>
-          </button>
-          <button onClick={controls.pause} title="Pause" className="control-btn">
-            <i className="fas fa-pause"></i>
-          </button>
-          <button onClick={controls.stop} title="Stop" className="control-btn">
-            <i className="fas fa-stop"></i>
-          </button>
-          <button onClick={() => controls.seekRelative(-10)} title="Seek Back 10s" className="control-btn">
-            <i className="fas fa-backward"></i>
-          </button>
-          <button onClick={() => controls.seekRelative(10)} title="Seek Forward 10s" className="control-btn">
-            <i className="fas fa-forward"></i>
-          </button>
-          <button onClick={controls.toggleMute} title="Toggle Mute" className="control-btn">
-            <i className="fas fa-volume-mute"></i>
-          </button>
-          <button onClick={controls.toggleFullscreen} title="Fullscreen" className="control-btn">
-            <i className="fas fa-expand"></i>
-          </button>
-          <button onClick={controls.screenshot} title="Screenshot" className="control-btn">
-            <i className="fas fa-camera"></i>
-          </button>
-        </div>
-      )}
-      
-      {/* 📊 Status display */}
-      <div className="mpv-status">
-        <div className={`status-indicator ${mpvConnected ? 'connected' : 'disconnected'}`}>
-          <span className="status-icon">
-            {mpvConnected ? '🟢' : '🔴'}
-          </span>
-          <span className="status-text">
-            {mpvConnected ? 'ULTIMATE SYNC ACTIVE' : 'Disconnected'}
-          </span>
-        </div>
+      {/* 🎮 Single Row Controls Layout */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '12px',
+        flexWrap: 'wrap',
+        justifyContent: 'space-between'
+      }}>
         
+        {/* 🚀 Launch Button */}
+        <button 
+          className={`mpv-launch ${mpvConnected ? 'connected' : ''}`}
+          onClick={launchMPV}
+          disabled={!serverFilePathRef.current || mpvConnected}
+          title={mpvConnected ? "Ultimate MPV Connected & Synced!" : "Launch Ultimate MPV Player"}
+          style={{
+            background: mpvConnected 
+              ? 'linear-gradient(145deg, #4caf50, #66bb6a)' 
+              : 'linear-gradient(145deg, #f44336, #e57373)',
+            color: 'white',
+            border: 'none',
+            padding: '12px 20px',
+            borderRadius: '10px',
+            fontSize: '1rem',
+            fontWeight: '600',
+            cursor: !serverFilePathRef.current || mpvConnected ? 'not-allowed' : 'pointer',
+            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            boxShadow: mpvConnected 
+              ? '0 4px 15px rgba(76, 175, 80, 0.4)' 
+              : '0 4px 15px rgba(244, 67, 54, 0.4)',
+            opacity: !serverFilePathRef.current ? 0.5 : 1
+          }}
+        >
+          {mpvConnected ? '🎯 MPV CONNECTED' : '🚀 LAUNCH MPV'}
+        </button>
+
+        {/* 🎮 Playback Controls - Only show when connected */}
         {mpvConnected && (
-          <div className="sync-info">
-            <span className="sync-accuracy">
-              {Math.abs(currentTime - useAudioSyncStore.getState().mpvCurrentTime) < 0.05 ? 
-                '✅ Perfect Sync' : 
-                `⚠️ ${Math.abs(currentTime - useAudioSyncStore.getState().mpvCurrentTime * 1000).toFixed(0)}ms drift`
-              }
-            </span>
-            <span className="command-queue">
-              Queue: {commandQueueRef.current.length} commands
-            </span>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            flex: '1',
+            justifyContent: 'center'
+          }}>
+            
+            {/* Combined Play/Pause Button - Same style as WaveSurfer */}
+            <button 
+              onClick={controls.playPause}
+              title="Play/Pause (Space)"
+              style={{
+                background: isPlaying 
+                  ? 'linear-gradient(145deg, #4caf50, #66bb6a)' 
+                  : 'linear-gradient(145deg, #4a9eff, #08c3f2)',
+                color: 'white',
+                border: 'none',
+                padding: '12px 16px',
+                borderRadius: '10px',
+                fontSize: '1.1rem',
+                fontWeight: '600',
+                cursor: 'pointer',
+                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                minWidth: '100px',
+                justifyContent: 'center',
+                boxShadow: isPlaying 
+                  ? '0 4px 15px rgba(76, 175, 80, 0.4)' 
+                  : '0 4px 15px rgba(74, 158, 255, 0.4)'
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.transform = 'translateY(-2px) scale(1.02)';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.transform = 'translateY(0) scale(1)';
+              }}
+            >
+              <i className={`fas ${isPlaying ? 'fa-pause' : 'fa-play'}`}></i>
+              {isPlaying ? 'Pause' : 'Play'}
+            </button>
+
+            {/* Stop Button */}
+            <button 
+              onClick={controls.stop}
+              title="Stop"
+              style={{
+                background: 'linear-gradient(145deg, #666, #555)',
+                color: 'white',
+                border: 'none',
+                padding: '12px',
+                borderRadius: '10px',
+                fontSize: '1.1rem',
+                cursor: 'pointer',
+                transition: 'all 0.3s ease',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '48px',
+                height: '48px',
+                boxShadow: '0 4px 15px rgba(102, 102, 102, 0.3)'
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.transform = 'translateY(-2px)';
+                e.target.style.background = 'linear-gradient(145deg, #777, #666)';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.transform = 'translateY(0)';
+                e.target.style.background = 'linear-gradient(145deg, #666, #555)';
+              }}
+            >
+              <i className="fas fa-stop"></i>
+            </button>
+
+            {/* Seek Backward */}
+            <button 
+              onClick={() => controls.seekRelative(-10)}
+              title="Seek Back 10s"
+              style={{
+                background: 'linear-gradient(145deg, #4a9eff, #08c3f2)',
+                color: 'white',
+                border: 'none',
+                padding: '12px',
+                borderRadius: '10px',
+                fontSize: '1.1rem',
+                cursor: 'pointer',
+                transition: 'all 0.3s ease',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '48px',
+                height: '48px',
+                boxShadow: '0 4px 15px rgba(74, 158, 255, 0.3)'
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.transform = 'translateY(-2px)';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.transform = 'translateY(0)';
+              }}
+            >
+              <i className="fas fa-backward"></i>
+            </button>
+
+            {/* Seek Forward */}
+            <button 
+              onClick={() => controls.seekRelative(10)}
+              title="Seek Forward 10s"
+              style={{
+                background: 'linear-gradient(145deg, #4a9eff, #08c3f2)',
+                color: 'white',
+                border: 'none',
+                padding: '12px',
+                borderRadius: '10px',
+                fontSize: '1.1rem',
+                cursor: 'pointer',
+                transition: 'all 0.3s ease',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '48px',
+                height: '48px',
+                boxShadow: '0 4px 15px rgba(74, 158, 255, 0.3)'
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.transform = 'translateY(-2px)';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.transform = 'translateY(0)';
+              }}
+            >
+              <i className="fas fa-forward"></i>
+            </button>
+
+            {/* Volume Down */}
+            <button 
+              onClick={() => controls.setVolume(Math.max(0, 70))}
+              title="Volume Down"
+              style={{
+                background: 'linear-gradient(145deg, #ff9800, #ffb74d)',
+                color: 'white',
+                border: 'none',
+                padding: '12px',
+                borderRadius: '10px',
+                fontSize: '1rem',
+                cursor: 'pointer',
+                transition: 'all 0.3s ease',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '48px',
+                height: '48px',
+                boxShadow: '0 4px 15px rgba(255, 152, 0, 0.3)'
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.transform = 'translateY(-2px)';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.transform = 'translateY(0)';
+              }}
+            >
+              <i className="fas fa-volume-down"></i>
+            </button>
+
+            {/* Volume Up */}
+            <button 
+              onClick={() => controls.setVolume(100)}
+              title="Volume Up"
+              style={{
+                background: 'linear-gradient(145deg, #ff9800, #ffb74d)',
+                color: 'white',
+                border: 'none',
+                padding: '12px',
+                borderRadius: '10px',
+                fontSize: '1rem',
+                cursor: 'pointer',
+                transition: 'all 0.3s ease',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '48px',
+                height: '48px',
+                boxShadow: '0 4px 15px rgba(255, 152, 0, 0.3)'
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.transform = 'translateY(-2px)';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.transform = 'translateY(0)';
+              }}
+            >
+              <i className="fas fa-volume-up"></i>
+            </button>
+
+            {/* Mute Toggle */}
+            <button 
+              onClick={controls.toggleMute}
+              title="Toggle Mute"
+              style={{
+                background: 'linear-gradient(145deg, #f44336, #e57373)',
+                color: 'white',
+                border: 'none',
+                padding: '12px',
+                borderRadius: '10px',
+                fontSize: '1rem',
+                cursor: 'pointer',
+                transition: 'all 0.3s ease',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '48px',
+                height: '48px',
+                boxShadow: '0 4px 15px rgba(244, 67, 54, 0.3)'
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.transform = 'translateY(-2px)';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.transform = 'translateY(0)';
+              }}
+            >
+              <i className="fas fa-volume-mute"></i>
+            </button>
+
+            {/* Fullscreen */}
+            <button 
+              onClick={controls.toggleFullscreen}
+              title="Toggle Fullscreen"
+              style={{
+                background: 'linear-gradient(145deg, #9c27b0, #ba68c8)',
+                color: 'white',
+                border: 'none',
+                padding: '12px',
+                borderRadius: '10px',
+                fontSize: '1rem',
+                cursor: 'pointer',
+                transition: 'all 0.3s ease',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '48px',
+                height: '48px',
+                boxShadow: '0 4px 15px rgba(156, 39, 176, 0.3)'
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.transform = 'translateY(-2px)';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.transform = 'translateY(0)';
+              }}
+            >
+              <i className="fas fa-expand"></i>
+            </button>
+          </div>
+        )}
+
+        {/* 📊 Status Display */}
+        {mpvConnected && (
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'flex-end',
+            fontSize: '0.85rem',
+            color: '#b0b0b0',
+            minWidth: '120px'
+          }}>
+            <div style={{
+              color: '#4caf50',
+              fontWeight: '600',
+              marginBottom: '2px'
+            }}>
+              🎯 SYNCED
+            </div>
+            <div style={{ color: '#4a9eff' }}>
+              {isPlaying ? '▶️ Playing' : '⏸️ Paused'}
+            </div>
           </div>
         )}
       </div>
-      
-      {/* 🎯 Pro tip display */}
-      {mpvConnected && (
-        <div className="pro-tips">
-          <details>
-            <summary>🎯 Pro Tips</summary>
-            <div className="tips-content">
-              <div>• Click regions for instant sync playback</div>
-              <div>• Drag on waveform to create new regions</div>
-              <div>• Use keyboard shortcuts for quick control</div>
-              <div>• MPV window stays on top for easy monitoring</div>
-            </div>
-          </details>
-        </div>
-      )}
     </div>
   );
 };

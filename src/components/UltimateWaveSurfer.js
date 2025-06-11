@@ -1,4 +1,4 @@
-// src/components/UltimateWaveSurfer.js - v20 with Integrated Ultimate Sync System
+// src/components/UltimateWaveSurfer.js - v21 Enhanced MPV Controls Layout & Styling
 import React, { useRef, useMemo, useCallback, useEffect, useState } from 'react';
 import { useWavesurfer } from '@wavesurfer/react';
 import RegionsPlugin from 'wavesurfer.js/dist/plugins/regions.js';
@@ -840,7 +840,7 @@ const UltimateWaveSurfer = ({
   return (
     <div className={`ultimate-wavesurfer ${className}`}>
       {/* 🎨 Custom scrollbar styling for both main waveform and minimap */}
-      <style jsx>{`
+      <style>{`
         /* Main waveform scrollbar */
         .waveform-container ::-webkit-scrollbar {
           height: 10px;
@@ -930,7 +930,7 @@ const UltimateWaveSurfer = ({
         }}
       />
 
-      {/* 🔄 Region Controls */}
+      {/* 🎯 Ultimate Single Row Controls - All controls in one compact row */}
       {isReady && (
         <div className="region-controls" style={{
           marginTop: '15px',
@@ -1022,37 +1022,26 @@ const UltimateWaveSurfer = ({
         </div>
       )}
       
-      {/* 📊 Real-time info display */}
+      {/* 📊 Minimal status - Only time and drag hint */}
       {isReady && (
-        <div className="wavesurfer-info" style={{
+        <div className="wavesurfer-status" style={{
           marginTop: '10px',
           padding: '8px 12px',
-          backgroundColor: '#333',
+          backgroundColor: '#2a2a2a',
           borderRadius: '4px',
-          fontSize: '0.9rem',
-          color: '#fff',
+          fontSize: '0.85rem',
+          color: '#ccc',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
           flexWrap: 'wrap',
-          gap: '10px'
+          gap: '15px'
         }}>
           <span>
             ⏱️ {formatTime(wsCurrentTime)} / {formatTime(wavesurfer?.getDuration() || 0)}
           </span>
-          <span>
-            🎵 Rate: {playbackRate.toFixed(1)}x | 🔍 Zoom: {zoomLevel}px/s
-          </span>
-          <span className={`status ${wavesurfer?.isPlaying() ? 'playing' : 'paused'}`}>
-            {wavesurfer?.isPlaying() ? '▶️ Playing' : '⏸️ Paused'}
-          </span>
-          {activeRegion && (
-            <span style={{ color: '#4a9eff' }}>
-              📊 Region: {activeRegion.start.toFixed(2)}s - {activeRegion.end.toFixed(2)}s
-              {loopRegions && <span style={{ color: '#4caf50', marginLeft: '8px' }}>🔄</span>}
-            </span>
-          )}
-          <span style={{ color: '#888', fontSize: '0.8rem' }}>
+          
+          <span style={{ color: '#888', fontSize: '0.75rem' }}>
             🎨 Drag to create regions
           </span>
         </div>
