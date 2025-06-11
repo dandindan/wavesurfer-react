@@ -1,51 +1,63 @@
-<!-- 
-  File: public/index.html 
-  Description: HTML entry point for the React application
-  
-  Version History:
-  v1.0.0 (2025-05-18) - Initial implementation
-  v1.0.1 (2025-05-18) - Added WaveSurfer scripts directly in HTML
-  v1.0.2 (2025-05-21) - Added WebSocket error suppression - Maoz Lahav
--->
-
 <!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="utf-8" />
     <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#000000" />
+    <meta name="theme-color" content="#4a9eff" />
     <meta
       name="description"
-      content="WaveSurfer with Regions - React Implementation"
+      content="Ultimate WaveSurfer-MPV Audio Sync - Professional audio visualization with perfect synchronization"
     />
-    <title>WaveSurfer with Regions</title>
+    <title>Ultimate WaveSurfer-MPV Sync</title>
 
     <!-- Font Awesome for icons -->
     <link
       rel="stylesheet"
-      href="https://use.fontawesome.com/releases/v5.15.4/css/all.css"
-      integrity="sha384-DyZ88mC6Up2uqS4h/KRgHuoeGwBcD4Ng9SiP4dIRy0EXTlnuz47vAwmeGwVChigm"
-      crossorigin="anonymous"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
     />
 
-    <!-- WaveSurfer and plugins -->
-    <script src="https://cdn.jsdelivr.net/npm/wavesurfer.js@7.9.4/dist/wavesurfer.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/wavesurfer.js@7.9.4/dist/plugins/spectrogram.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/wavesurfer.js@7.9.4/dist/plugins/timeline.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/wavesurfer.js@7.9.4/dist/plugins/hover.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/wavesurfer.js@7.9.4/dist/plugins/minimap.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/wavesurfer.js@7.9.4/dist/plugins/regions.min.js"></script>
+    <!-- Performance optimizations -->
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com" />
+    <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com" />
 
-    <!-- WebSocket error suppression for development -->
-    <script src="%PUBLIC_URL%/disable-websocket.js"></script>
+    <!-- Prevent FOUC (Flash of Unstyled Content) -->
+    <style>
+      body {
+        visibility: hidden;
+        opacity: 0;
+      }
+      body.loaded {
+        visibility: visible;
+        opacity: 1;
+        transition: opacity 0.3s;
+      }
+    </style>
   </head>
   <body>
-    <noscript>You need to enable JavaScript to run this app.</noscript>
+    <noscript>
+      <div
+        style="
+          text-align: center;
+          padding: 50px;
+          font-family: Arial, sans-serif;
+        "
+      >
+        <h2>🚨 JavaScript Required</h2>
+        <p>
+          This Ultimate WaveSurfer-MPV application requires JavaScript to
+          function.
+        </p>
+        <p>Please enable JavaScript in your browser settings.</p>
+      </div>
+    </noscript>
     <div id="root"></div>
-    <!--
-      This HTML file is a template.
-      The React app will be mounted to the div with id="root".
-    -->
+
+    <!-- Show body after React loads -->
+    <script>
+      window.addEventListener('load', () => {
+        document.body.classList.add('loaded');
+      });
+    </script>
   </body>
 </html>

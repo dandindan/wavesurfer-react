@@ -1,416 +1,522 @@
-/**
- * File: src/App.js
- * Description: CLEAN App - No Overlapping Elements
- * 
- * Version History:
- * v4.0.0 (2025-06-10) - CLEAN SIMPLE VERSION - Human Request
- *   - REMOVED overlapping help text elements
- *   - CLEAN UI with no visual mess
- *   - KEPT only essential features
- */
-
-import React, { useState, useRef, useEffect } from 'react';
-import WaveSurferComponent from './components/WaveSurferComponent';
-import MPVController from './components/MPVController';
+// src/App.js
+import React, { useCallback, useEffect } from 'react';
+import { useAudioSyncStore } from './store/audioSyncStore';
+import UltimateWaveSurfer from './components/UltimateWaveSurfer';
+import UltimateMPVController from './components/UltimateMPVController';
 import StatusBar from './components/StatusBar';
 import UploadPanel from './components/UploadPanel';
 import './assets/styles/main.css';
 import './assets/styles/integrated-controls.css';
 
-function App() {
-  // State
-  const [audioFile, setAudioFile] = useState(null);
-  const [originalFile, setOriginalFile] = useState(null);
-  const [fileIdentifier, setFileIdentifier] = useState(null);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [fileName, setFileName] = useState("");
-  const [isReady, setIsReady] = useState(false);
-  const [zoomLevel, setZoomLevel] = useState(100);
-  const [playbackSpeed, setPlaybackSpeed] = useState(1.0);
-  const [waveSurferMuted, setWaveSurferMuted] = useState(false);
-  const loopRegions = true;
-  const [status, setStatus] = useState({ text: "No audio loaded", type: "info" });
-  const [alert, setAlert] = useState({ message: "", isOpen: false, type: "info" });
-  const [activeRegion, setActiveRegion] = useState(null);
-  const [mpvConnected, setMpvConnected] = useState(false);
-  
-  // Refs
-  const wavesurferRef = useRef(null);
-  
-  // Handler for file uploads
-  const handleFileUpload = (file) => {
+function UltimateApp() {
+  const {
+    // 🎵 Audio state
+    audioFile,
+    audioUrl,
+    isPlaying,
+    currentTime,
+    duration,
+    playbackRate,
+    zoomLevel,
+    isMuted,
+    
+    // 🎬 MPV state
+    mpvConnected,
+    syncAccuracy,
+    
+    // 🎨 UI state
+    loading,
+    error,
+    status,
+    activeRegion,
+    
+    // 🚀 Actions
+    setAudioFile,
+    setIsPlaying,
+    setPlaybackRate,
+    setZoomLevel,
+    setIsMuted,
+    setActiveRegion,
+    setError,
+    setStatus,
+    reset,
+    validateAudioFile,
+    getPerformanceStats
+  } = useAudioSyncStore();
+
+  // 📁 Ultimate file upload handler
+  const handleFileUpload = useCallback((file) => {
     if (!file) return;
     
-    console.log("App: File uploaded:", file.name);
+    console.log("🎵 Ultimate App: File uploaded:", file.name);
     
-    const newFileIdentifier = file instanceof File 
-      ? `${file.name}-${file.size}-${file.lastModified}`
-      : file;
-    
-    if (newFileIdentifier !== fileIdentifier) {
-      setFileIdentifier(newFileIdentifier);
-      
-      setOriginalFile(file);
-      
-      if (file instanceof File) {
-        const url = URL.createObjectURL(file);
-        setAudioFile(url);
-        setFileName(file.name);
-        console.log("App: Created blob URL for WaveSurfer:", url);
-      } else {
-        setAudioFile(file);
-        setOriginalFile(file);
-        setFileName(String(file));
-      }
-      
-      setIsPlaying(false);
-      setIsReady(false);
-      setMpvConnected(false);
-      setStatus({ text: "Loading...", type: "warning" });
-      setAlert({ message: `File loaded: ${file instanceof File ? file.name : 'Audio file'}`, isOpen: true, type: "success" });
-    }
-  };
-  
-  // Handler for play/pause
-  const handlePlayPause = (isCurrentlyPlaying) => {
-    console.log("🎵 App: Play/Pause triggered");
-    
-    const newPlayingState = isCurrentlyPlaying !== undefined ? isCurrentlyPlaying : !isPlaying;
-    setIsPlaying(newPlayingState);
-    
-    setAlert({
-      message: newPlayingState ? `Playing` : `Paused`,
-      isOpen: true,
-      type: "info"
-    });
-    
-    console.log(`🎵 App: Setting play state to ${newPlayingState}`);
-  };
-  
-  // Handler for WaveSurfer ready event
-  const handleReady = (wavesurfer) => {
-    wavesurferRef.current = wavesurfer;
-    setIsReady(true);
-    setStatus({ text: `Loaded: ${fileName}`, type: "success" });
-    
-    if (waveSurferMuted) {
-      try {
-        wavesurfer.setVolume(0);
-      } catch (error) {
-        console.error("Error applying mute on ready:", error);
-      }
-    }
-  };
-  
-  // Handler for zoom in
-  const handleZoomIn = () => {
-    const newZoom = Math.min(1000, zoomLevel + 50);
-    setZoomLevel(newZoom);
-  };
-  
-  // Handler for zoom out
-  const handleZoomOut = () => {
-    const newZoom = Math.max(10, zoomLevel - 50);
-    setZoomLevel(newZoom);
-  };
-  
-  // Handler for reset zoom
-  const handleResetZoom = () => {
-    setZoomLevel(100);
-  };
-  
-  // Handler for mute/unmute WaveSurfer
-  const handleToggleWaveSurferMute = () => {
-    const newMutedState = !waveSurferMuted;
-    setWaveSurferMuted(newMutedState);
-    
-    if (wavesurferRef.current) {
-      try {
-        if (newMutedState) {
-          wavesurferRef.current.setVolume(0);
-        } else {
-          wavesurferRef.current.setVolume(1);
-        }
-        
-        setAlert({
-          message: newMutedState ? `WaveSurfer muted` : "WaveSurfer unmuted",
-          isOpen: true,
-          type: "info"
-        });
-      } catch (error) {
-        console.error("Error toggling WaveSurfer mute:", error);
-      }
-    }
-  };
-  
-  // Handler for clear regions
-  const handleClearRegions = () => {
-    if (!wavesurferRef.current) {
-      console.error("WaveSurfer instance not available");
-      setAlert({ message: "Cannot clear regions: Player not initialized", isOpen: true, type: "danger" });
-      return;
+    // Validate file before processing
+    if (!validateAudioFile(file)) {
+      return; // Error already set by validateAudioFile
     }
     
-    try {
-      console.log("Attempting to clear regions...");
-      
-      if (typeof wavesurferRef.current.clearAllRegions === 'function') {
-        const result = wavesurferRef.current.clearAllRegions();
-        if (result) {
-          setAlert({ message: "All regions cleared", isOpen: true, type: "success" });
-          setActiveRegion(null);
-          return;
-        }
-      }
-      
-      if (wavesurferRef.current.regions) {
-        console.log("Found regions plugin:", wavesurferRef.current.regions);
-        wavesurferRef.current.regions.clearRegions();
-        setAlert({ message: "All regions cleared", isOpen: true, type: "success" });
-        setActiveRegion(null);
-      } else {
-        const regionsPlugin = wavesurferRef.current.getActivePlugins()?.find(
-          plugin => plugin.name === 'regions' || plugin.params?.name === 'regions'
-        );
-        
-        if (regionsPlugin) {
-          console.log("Found regions plugin:", regionsPlugin);
-          regionsPlugin.clearRegions();
-          setAlert({ message: "All regions cleared", isOpen: true, type: "success" });
-          setActiveRegion(null);
-        } else {
-          console.error("Regions plugin not found");
-          setAlert({ message: "Could not clear regions", isOpen: true, type: "danger" });
-        }
-      }
-    } catch (error) {
-      console.error("Error clearing regions:", error);
-      setAlert({ message: "Error clearing regions", isOpen: true, type: "danger" });
-    }
-  };
-  
-  // Handler for region activation
-  const handleRegionActivated = (region) => {
-    console.log("App: Region activated:", region);
+    setAudioFile(file);
+    setStatus(`🚀 Loading ultimate visualization for: ${file.name}`);
+  }, [setAudioFile, setStatus, validateAudioFile]);
+
+  // 🎯 WaveSurfer ready handler
+  const handleWaveSurferReady = useCallback((wavesurfer) => {
+    console.log("🎯 Ultimate WaveSurfer ready!");
+    setStatus(`🎯 Ultimate WaveSurfer ready: ${audioFile?.name || 'Audio loaded'}`);
     
-    if (region.isClickPosition) {
-      console.log(`App: Waveform clicked at ${region.start}s`);
-      setAlert({
-        message: `Seeking to ${region.start.toFixed(2)}s`,
-        isOpen: true,
-        type: "info"
-      });
+    // Attach to global scope for debugging
+    if (process.env.NODE_ENV === 'development') {
+      window.ultimateWaveSurfer = wavesurfer;
+      console.log('🎯 WaveSurfer attached to window.ultimateWaveSurfer');
+    }
+  }, [audioFile?.name, setStatus]);
+
+  // 🎵 Region interaction handler
+  const handleRegionClick = useCallback((region) => {
+    console.log("🎵 Region activated:", region);
+    setActiveRegion(region);
+    setStatus(`🎵 Region active: ${region.start.toFixed(2)}s - ${region.end.toFixed(2)}s`);
+  }, [setActiveRegion, setStatus]);
+
+  // ⏱️ Time update handler
+  const handleTimeUpdate = useCallback((time) => {
+    // Auto-clear active region when playback moves beyond it
+    if (activeRegion && time >= activeRegion.end) {
+      setActiveRegion(null);
+      setStatus("Playback beyond region - region deactivated");
+    }
+  }, [activeRegion, setActiveRegion, setStatus]);
+
+  // 🎬 MPV status change handler
+  const handleMPVStatusChange = useCallback((mpvStatus) => {
+    console.log("🎬 MPV status changed:", mpvStatus);
+    
+    if (mpvStatus.isConnected) {
+      setStatus("🎯 Ultimate MPV connected - Perfect sync active!");
     } else {
-      setActiveRegion(region);
-      setAlert({
-        message: `Region selected: ${region.start.toFixed(2)}s - ${region.end.toFixed(2)}s`,
-        isOpen: true,
-        type: "info"
-      });
+      setStatus("🎬 MPV disconnected");
     }
-  };
-  
-  // Handler for MPV status changes
-  const handleMPVStatusChange = (mpvStatus) => {
-    console.log("App: MPV status changed:", mpvStatus);
-    
-    if (mpvStatus.isConnected !== mpvConnected) {
-      setMpvConnected(mpvStatus.isConnected);
-      
-      if (mpvStatus.isConnected) {
-        setStatus({ text: `${fileName} - MPV Connected`, type: "success" });
-        setAlert({ message: "MPV connected and ready", isOpen: true, type: "success" });
-      } else {
-        setStatus({ text: `${fileName} - MPV Disconnected`, type: "warning" });
-        setAlert({ message: "MPV disconnected", isOpen: true, type: "warning" });
-      }
-    }
-    
-    if (mpvStatus.isPlaying !== undefined && mpvStatus.isPlaying !== isPlaying) {
-      setIsPlaying(mpvStatus.isPlaying);
-    }
-  };
-  
-  // Handler for MPV errors
-  const handleMPVError = (error) => {
-    console.error("App: MPV error:", error);
-    setAlert({ message: `MPV Error: ${error}`, isOpen: true, type: "danger" });
-    setStatus({ text: `${fileName} - MPV Error`, type: "danger" });
-  };
-  
-  // Handler for MPV region playback
-  const handleMPVRegionPlayback = (data) => {
-    console.log("App: MPV playing region:", data);
-    const regionInfo = `Region: ${data.region.start.toFixed(2)}s - ${data.region.end.toFixed(2)}s`;
-    setAlert({
-      message: `MPV ${regionInfo}`,
-      isOpen: true,
-      type: "info"
-    });
-  };
-  
-  // Playback speed handler
-  const handlePlaybackSpeedChange = (newSpeed) => {
-    setPlaybackSpeed(newSpeed);
-    
-    setAlert({
-      message: `Speed: ${newSpeed.toFixed(1)}x`,
-      isOpen: true,
-      type: "info"
-    });
-  };
-  
-  // Close alert after 3 seconds
+  }, [setStatus]);
+
+  // ❌ Error handler
+  const handleError = useCallback((errorMessage) => {
+    console.error("❌ Ultimate App Error:", errorMessage);
+    setError(errorMessage);
+  }, [setError]);
+
+  // ⌨️ Ultimate keyboard shortcuts
   useEffect(() => {
-    if (alert.isOpen) {
-      const timer = setTimeout(() => {
-        setAlert(prev => ({ ...prev, isOpen: false }));
-      }, 3000);
+    const handleKeyboard = (e) => {
+      // Don't interfere with input fields
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
       
-      return () => clearTimeout(timer);
-    }
-  }, [alert.isOpen]);
-  
-  // Cleanup blob URLs when component unmounts
-  useEffect(() => {
-    return () => {
-      if (audioFile && audioFile.startsWith && audioFile.startsWith('blob:')) {
-        URL.revokeObjectURL(audioFile);
+      switch (e.code) {
+        case 'Space':
+          e.preventDefault();
+          setIsPlaying(!isPlaying);
+          setStatus(isPlaying ? "⏸️ Paused" : "▶️ Playing");
+          break;
+          
+        case 'KeyR':
+          if (e.ctrlKey) {
+            e.preventDefault();
+            reset();
+            setStatus("🔄 Ultimate reset complete!");
+          }
+          break;
+          
+        case 'KeyM':
+          if (e.ctrlKey) {
+            e.preventDefault();
+            setIsMuted(!isMuted);
+            setStatus(isMuted ? "🔊 WaveSurfer unmuted" : "🔇 WaveSurfer muted");
+          }
+          break;
+          
+        case 'Equal':
+        case 'NumpadAdd':
+          if (e.ctrlKey) {
+            e.preventDefault();
+            const newZoom = Math.min(1000, zoomLevel + 50);
+            setZoomLevel(newZoom);
+            setStatus(`🔍 Zoom: ${newZoom}px/s`);
+          }
+          break;
+          
+        case 'Minus':
+        case 'NumpadSubtract':
+          if (e.ctrlKey) {
+            e.preventDefault();
+            const newZoom = Math.max(10, zoomLevel - 50);
+            setZoomLevel(newZoom);
+            setStatus(`🔍 Zoom: ${newZoom}px/s`);
+          }
+          break;
+          
+        case 'Digit0':
+        case 'Numpad0':
+          if (e.ctrlKey) {
+            e.preventDefault();
+            setZoomLevel(100);
+            setStatus("🔍 Zoom reset to 100px/s");
+          }
+          break;
+          
+        case 'ArrowUp':
+          if (e.ctrlKey) {
+            e.preventDefault();
+            const newRate = Math.min(3, playbackRate + 0.25);
+            setPlaybackRate(newRate);
+            setStatus(`⚡ Speed: ${newRate.toFixed(2)}x`);
+          }
+          break;
+          
+        case 'ArrowDown':
+          if (e.ctrlKey) {
+            e.preventDefault();
+            const newRate = Math.max(0.25, playbackRate - 0.25);
+            setPlaybackRate(newRate);
+            setStatus(`⚡ Speed: ${newRate.toFixed(2)}x`);
+          }
+          break;
+          
+        case 'Escape':
+          if (activeRegion) {
+            setActiveRegion(null);
+            setStatus("Region deactivated");
+          }
+          break;
+          
+        default:
+          break;
       }
     };
-  }, [audioFile]);
-  
-  return (
-    <div className="container">
-      <h1>WaveSurfer with Regions and MPV</h1>
-      
-      <StatusBar status={status.text} type={status.type} />
-      
-      <UploadPanel onFileUpload={handleFileUpload} />
-      
-      <WaveSurferComponent
-        audioFile={audioFile}
-        isPlaying={isPlaying}
-        loopRegions={loopRegions}
-        zoomLevel={zoomLevel}
-        playbackSpeed={playbackSpeed}
-        isMuted={waveSurferMuted}
-        onPlayPause={handlePlayPause}
-        onReady={handleReady}
-        onRegionActivated={handleRegionActivated}
-      />
-      
-      <div className="all-controls">
-        {/* First row: sliders for zoom and speed */}
-        <div className="controls-row">
-          {/* Zoom control slider */}
-          <div className="slider-container">
-            <span className="slider-label">Zoom:</span>
-            <input
-              type="range"
-              id="zoom-slider"
-              min="10"
-              max="1000"
-              value={zoomLevel}
-              onChange={(e) => setZoomLevel(Number(e.target.value))}
-            />
-            <span id="zoom-value" className="slider-value">{zoomLevel}</span>
-          </div>
 
-          {/* Playback speed control slider */}
-          <div className="slider-container">
-            <span className="slider-label">Speed:</span>
-            <input
-              type="range"
-              id="speed-slider"
-              min="0.5"
-              max="3"
-              step="0.1"
-              value={playbackSpeed}
-              onChange={(e) => handlePlaybackSpeedChange(Number(e.target.value))}
-            />
-            <span id="speed-value" className="slider-value">{playbackSpeed.toFixed(1)}x</span>
-          </div>
+    document.addEventListener('keydown', handleKeyboard);
+    return () => document.removeEventListener('keydown', handleKeyboard);
+  }, [isPlaying, isMuted, zoomLevel, playbackRate, activeRegion, 
+      setIsPlaying, setIsMuted, setZoomLevel, setPlaybackRate, 
+      setActiveRegion, reset, setStatus]);
+
+  // 🧹 Auto-clear errors
+  useEffect(() => {
+    if (error) {
+      const timer = setTimeout(() => setError(null), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [error, setError]);
+
+  // 📊 Performance monitoring (development only)
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      const interval = setInterval(() => {
+        const stats = getPerformanceStats();
+        console.log('📊 Performance Stats:', stats);
+      }, 10000); // Every 10 seconds
+      
+      return () => clearInterval(interval);
+    }
+  }, [getPerformanceStats]);
+
+  return (
+    <div className="ultimate-app">
+      {/* 🎯 Ultimate Header */}
+      <header className="app-header">
+        <h1>Ultimate WaveSurfer-MPV Sync</h1>
+        <div className="app-stats">
+          {duration > 0 && (
+            <>
+              <span>⏱️ Duration: {formatTime(duration)}</span>
+              <span>•</span>
+            </>
+          )}
+          <span>⚡ Rate: {playbackRate.toFixed(1)}x</span>
+          <span>•</span>
+          <span>🔍 Zoom: {zoomLevel}px/s</span>
+          {mpvConnected && (
+            <>
+              <span>•</span>
+              <span className={`sync-status ${syncAccuracy < 0.05 ? 'perfect' : 'drift'}`}>
+                {syncAccuracy < 0.05 ? 
+                  '✅ Perfect Sync' : 
+                  `⚠️ ${(syncAccuracy * 1000).toFixed(0)}ms drift`
+                }
+              </span>
+            </>
+          )}
         </div>
-        
-        {/* Second row: combined WaveSurfer and MPV controls */}
-        <div className="main-controls">
-          {/* WaveSurfer control buttons */}
-          <div className="player-buttons">
-            <button id="play-pause" onClick={() => handlePlayPause()}>
+      </header>
+
+      {/* 📊 Status bar */}
+      <StatusBar 
+        status={status} 
+        type={error ? "danger" : loading ? "warning" : mpvConnected ? "success" : "info"} 
+      />
+
+      {/* 📁 Upload panel */}
+      <UploadPanel onFileUpload={handleFileUpload} />
+
+      {/* 🎯 Main audio visualization */}
+      {audioUrl && (
+        <UltimateWaveSurfer
+          audioUrl={audioUrl}
+          onReady={handleWaveSurferReady}
+          onRegionClick={handleRegionClick}
+          onTimeUpdate={handleTimeUpdate}
+          className="main-wavesurfer"
+          height={220}
+        />
+      )}
+
+      {/* 🎮 Ultimate control panels */}
+      <div className="ultimate-controls">
+        {/* 🎵 Playback controls */}
+        <div className="control-section playback-controls">
+          <h3>🎵 Playback</h3>
+          <div className="controls-grid">
+            <button 
+              onClick={() => setIsPlaying(!isPlaying)}
+              className={`play-pause ${isPlaying ? 'playing' : 'paused'}`}
+              disabled={!audioUrl}
+              title="Spacebar"
+            >
+              <i className={`fas ${isPlaying ? 'fa-pause' : 'fa-play'}`}></i>
               {isPlaying ? 'Pause' : 'Play'}
             </button>
+            
             <button 
-              id="toggle-mute" 
-              onClick={handleToggleWaveSurferMute} 
-              disabled={!isReady}
-              className={waveSurferMuted ? 'muted' : ''}
-              title={waveSurferMuted ? 'Unmute WaveSurfer audio' : 'Mute WaveSurfer audio (MPV audio stays active)'}
+              onClick={() => setIsMuted(!isMuted)}
+              className={`mute-toggle ${isMuted ? 'muted' : ''}`}
+              disabled={!audioUrl}
+              title="Ctrl+M - Mute WaveSurfer (MPV audio continues)"
             >
-              <i className={`fas ${waveSurferMuted ? 'fa-volume-mute' : 'fa-volume-up'}`}></i> WS
+              <i className={`fas ${isMuted ? 'fa-volume-mute' : 'fa-volume-up'}`}></i>
+              WS Audio
             </button>
-            <button id="zoom-in" onClick={handleZoomIn} disabled={!isReady}>
-              Zoom In
+          </div>
+        </div>
+
+        {/* 🔍 Zoom controls */}
+        <div className="control-section zoom-controls">
+          <h3>🔍 Zoom</h3>
+          <div className="range-control">
+            <input
+              type="range"
+              min="10"
+              max="1000"
+              step="10"
+              value={zoomLevel}
+              onChange={(e) => setZoomLevel(Number(e.target.value))}
+              disabled={!audioUrl}
+            />
+            <div className="range-info">
+              <span>{zoomLevel}px/s</span>
+              <small>Ctrl + +/- to adjust</small>
+            </div>
+          </div>
+        </div>
+
+        {/* ⚡ Speed controls */}
+        <div className="control-section speed-controls">
+          <h3>⚡ Speed</h3>
+          <div className="range-control">
+            <input
+              type="range"
+              min="0.25"
+              max="3"
+              step="0.25"
+              value={playbackRate}
+              onChange={(e) => setPlaybackRate(Number(e.target.value))}
+              disabled={!audioUrl}
+            />
+            <div className="range-info">
+              <span>{playbackRate.toFixed(2)}x</span>
+              <small>Ctrl + ↑/↓ to adjust</small>
+            </div>
+          </div>
+        </div>
+
+        {/* 📊 Region controls */}
+        <div className="control-section region-controls">
+          <h3>📊 Regions</h3>
+          <div className="controls-grid">
+            <button 
+              onClick={() => window.ultimateWaveSurfer?.ultimate?.clearAllRegions()}
+              disabled={!audioUrl}
+              className="clear-regions"
+              title="Clear all regions"
+            >
+              <i className="fas fa-trash"></i>
+              Clear All
             </button>
-            <button id="zoom-out" onClick={handleZoomOut} disabled={!isReady}>
-              Zoom Out
-            </button>
-            <button id="reset-zoom" onClick={handleResetZoom} disabled={!isReady}>
-              Reset Zoom
-            </button>
-            <button id="clear-regions" className="danger" onClick={handleClearRegions} disabled={!isReady}>
-              Clear Regions
-            </button>
+            
+            {activeRegion && (
+              <button
+                onClick={() => setActiveRegion(null)}
+                className="deactivate-region"
+                title="Escape key"
+              >
+                <i className="fas fa-times"></i>
+                Deactivate
+              </button>
+            )}
           </div>
           
-          {/* MPV controls section */}
-          <div className="vlc-section">
-            <MPVController
-              mediaFile={originalFile}
-              wavesurferInstance={wavesurferRef.current}
-              activeRegion={activeRegion}
-              onStatusChange={handleMPVStatusChange}
-              onError={handleMPVError}
-              onRegionPlayback={handleMPVRegionPlayback}
-            />
-          </div>
+          {activeRegion && (
+            <div className="active-region-info">
+              <div className="region-details">
+                <span className="region-time">
+                  📊 {activeRegion.start.toFixed(3)}s - {activeRegion.end.toFixed(3)}s
+                </span>
+                <span className="region-duration">
+                  Duration: {(activeRegion.end - activeRegion.start).toFixed(3)}s
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* 🎬 MPV controls */}
+        <div className="control-section mpv-section">
+          <h3>🎬 Ultimate MPV</h3>
+          <UltimateMPVController
+            onStatusChange={handleMPVStatusChange}
+            onError={handleError}
+          />
         </div>
       </div>
-      
-      {/* CLEAN alert system */}
-      {alert.isOpen && (
-        <div className={`alert alert-${alert.type}`} style={{
-          position: 'relative',
-          animation: 'fadeIn 0.3s ease-in'
-        }}>
-          {alert.message}
-          <button 
-            onClick={() => setAlert(prev => ({ ...prev, isOpen: false }))}
-            style={{
-              position: 'absolute',
-              right: '10px',
-              top: '50%',
-              transform: 'translateY(-50%)',
-              background: 'none',
-              border: 'none',
-              color: 'inherit',
-              fontSize: '1.2rem',
-              cursor: 'pointer',
-              opacity: 0.7,
-              padding: '0',
-              width: '20px',
-              height: '20px'
-            }}
-            title="Close alert"
-          >
-            ×
-          </button>
+
+      {/* ❌ Error display */}
+      {error && (
+        <div className="error-display">
+          <div className="error-content">
+            <i className="fas fa-exclamation-triangle"></i>
+            <span>{error}</span>
+            <button 
+              onClick={() => setError(null)}
+              title="Close error"
+            >
+              <i className="fas fa-times"></i>
+            </button>
+          </div>
         </div>
       )}
-      
-      {/* REMOVED ALL OVERLAPPING HELP TEXT - CLEAN! */}
+
+      {/* ⏳ Loading overlay */}
+      {loading && (
+        <div className="loading-overlay">
+          <div className="loading-content">
+            <div className="ultimate-spinner"></div>
+            <span>🎯 Processing ultimate audio visualization...</span>
+            <div className="loading-tips">
+              <p>✨ Preparing perfect sync experience</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ⌨️ Keyboard shortcuts help */}
+      <div className="keyboard-shortcuts">
+        <details>
+          <summary>⌨️ Ultimate Shortcuts</summary>
+          <div className="shortcuts-grid">
+            <div className="shortcut-group">
+              <h4>🎵 Playback</h4>
+              <div className="shortcut"><kbd>Space</kbd> Play/Pause</div>
+              <div className="shortcut"><kbd>Ctrl</kbd> + <kbd>M</kbd> Mute WS</div>
+              <div className="shortcut"><kbd>Esc</kbd> Deactivate Region</div>
+            </div>
+            <div className="shortcut-group">
+              <h4>🔍 View</h4>
+              <div className="shortcut"><kbd>Ctrl</kbd> + <kbd>+/-</kbd> Zoom</div>
+              <div className="shortcut"><kbd>Ctrl</kbd> + <kbd>0</kbd> Reset Zoom</div>
+              <div className="shortcut"><kbd>Ctrl</kbd> + <kbd>↑/↓</kbd> Speed</div>
+            </div>
+            <div className="shortcut-group">
+              <h4>🎯 System</h4>
+              <div className="shortcut"><kbd>Ctrl</kbd> + <kbd>R</kbd> Reset All</div>
+              <div className="shortcut"><kbd>Drag</kbd> Create Region</div>
+              <div className="shortcut"><kbd>Click</kbd> Seek to Position</div>
+            </div>
+          </div>
+        </details>
+      </div>
+
+      {/* 🎯 Performance display */}
+      {mpvConnected && (
+        <div className="performance-display">
+          <div className="perf-indicator">
+            <span className="perf-label">🎯 Sync:</span>
+            <span className={`perf-value ${syncAccuracy < 0.05 ? 'excellent' : syncAccuracy < 0.1 ? 'good' : 'poor'}`}>
+              {syncAccuracy < 0.05 ? 'PERFECT' : `${(syncAccuracy * 1000).toFixed(0)}ms`}
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* 🐛 Debug panel (development only) */}
+      {process.env.NODE_ENV === 'development' && (
+        <div className="debug-panel">
+          <details>
+            <summary>🐛 Ultimate Debug</summary>
+            <div className="debug-grid">
+              <div className="debug-section">
+                <h4>📁 Audio</h4>
+                <div>File: {audioFile?.name || 'None'}</div>
+                <div>Duration: {formatTime(duration)}</div>
+                <div>Current: {formatTime(currentTime)}</div>
+                <div>Playing: {isPlaying ? 'Yes' : 'No'}</div>
+                <div>Rate: {playbackRate}x</div>
+                <div>Muted: {isMuted ? 'Yes' : 'No'}</div>
+              </div>
+              <div className="debug-section">
+                <h4>🎬 MPV</h4>
+                <div>Connected: {mpvConnected ? 'Yes' : 'No'}</div>
+                <div>Sync: {syncAccuracy.toFixed(4)}s</div>
+                <div>Mode: {useAudioSyncStore.getState().syncMode}</div>
+              </div>
+              <div className="debug-section">
+                <h4>📊 Regions</h4>
+                <div>Active: {activeRegion ? `${activeRegion.start.toFixed(2)}s-${activeRegion.end.toFixed(2)}s` : 'None'}</div>
+                <div>Total: {useAudioSyncStore.getState().regions.length}</div>
+              </div>
+              <div className="debug-section">
+                <h4>⚡ Performance</h4>
+                <div>Zoom: {zoomLevel}px/s</div>
+                <div>Status: {status}</div>
+                <div>Loading: {loading ? 'Yes' : 'No'}</div>
+                <div>Error: {error ? 'Yes' : 'No'}</div>
+              </div>
+            </div>
+          </details>
+        </div>
+      )}
+
+      {/* 🎯 Ultimate footer */}
+      <footer className="app-footer">
+        <div className="footer-content">
+          <span>🎯 Ultimate WaveSurfer-MPV Sync v2.0</span>
+          <span>•</span>
+          <span>Perfect audio visualization with real-time synchronization</span>
+          {mpvConnected && (
+            <>
+              <span>•</span>
+              <span className="sync-badge">✅ SYNCED</span>
+            </>
+          )}
+        </div>
+      </footer>
     </div>
   );
 }
 
-export default App;
+// 🎯 Helper function
+const formatTime = (seconds) => {
+  if (!seconds && seconds !== 0) return '--:--';
+  const minutes = Math.floor(seconds / 60);
+  const secs = Math.floor(seconds % 60);
+  const ms = Math.floor((seconds % 1) * 100);
+  return `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}.${ms.toString().padStart(2, '0')}`;
+};
+
+export default UltimateApp;

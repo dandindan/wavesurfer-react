@@ -1,19 +1,21 @@
 {
-  "name": "wavesurfer-react",
-  "version": "1.0.17",
-  "description": "WaveSurfer with MPV Real-time Sync - Enhanced Integration",
+  "name": "ultimate-wavesurfer-mpv-sync",
+  "version": "2.0.0",
+  "description": "🎯 Ultimate WaveSurfer-MPV Audio Sync - Professional audio visualization with perfect synchronization",
   "private": true,
   "proxy": "http://localhost:3001",
   "dependencies": {
-    "@wavesurfer/react": "^1.0.4",
-    "body-parser": "^2.2.0",
-    "cors": "^2.8.5",
-    "express": "^5.1.0",
-    "multer": "^1.4.5-lts.2",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
+    "@wavesurfer/react": "^1.0.11",
+    "zustand": "^4.5.0",
+    "wavesurfer.js": "^7.8.0",
+    "react": "^18.3.0",
+    "react-dom": "^18.3.0",
     "react-scripts": "5.0.1",
-    "wavesurfer.js": "^7.9.4"
+    "express": "^4.19.0",
+    "cors": "^2.8.5",
+    "multer": "^1.4.5-lts.1",
+    "ws": "^8.16.0",
+    "body-parser": "^1.20.2"
   },
   "scripts": {
     "start": "react-scripts start",
@@ -21,14 +23,21 @@
     "test": "react-scripts test",
     "eject": "react-scripts eject",
     "server": "node server/server.js",
-    "dev": "concurrently \"npm run server\" \"npm run start\"",
-    "dev:verbose": "concurrently --names \"MPV-API,React\" --prefix-colors \"blue,green\" \"npm run server\" \"npm run start\"",
-    "mpv-test": "mpv --version",
-    "system-check": "node -e \"console.log('Node:', process.version); console.log('NPM:', process.env.npm_version || 'Unknown');\""
+    "dev": "concurrently --names \"🚀SERVER,⚡REACT\" --prefix-colors \"blue,green\" \"npm run server\" \"npm start\"",
+    "ultimate": "echo '🎯 Starting Ultimate WaveSurfer-MPV Experience...' && npm run dev",
+    "dev:verbose": "concurrently --names \"🎬MPV-API,🎯REACT-APP\" --prefix-colors \"magenta,cyan\" \"npm run server\" \"npm start\"",
+    "clean": "rm -rf node_modules package-lock.json && npm install",
+    "reset": "npm run clean && echo '🎯 Ultimate project reset complete!'",
+    "check": "echo '🔍 Checking Ultimate System...' && node --version && npm --version && echo '✅ Node.js and npm are ready!'",
+    "mpv-test": "mpv --version || echo '⚠️ MPV not found. Please install MPV media player.'",
+    "system-check": "npm run check && npm run mpv-test",
+    "build:analyze": "npm run build && npx serve -s build",
+    "performance": "echo '📊 Performance mode - optimized for speed' && NODE_ENV=production npm run dev"
   },
   "eslintConfig": {
     "extends": [
-      "react-app"
+      "react-app",
+      "react-app/jest"
     ]
   },
   "browserslist": {
@@ -45,5 +54,17 @@
   },
   "devDependencies": {
     "concurrently": "^9.1.2"
-  }
+  },
+  "keywords": [
+    "wavesurfer",
+    "mpv",
+    "audio",
+    "visualization",
+    "sync",
+    "react",
+    "professional",
+    "ultimate"
+  ],
+  "author": "Ultimate Developer",
+  "license": "MIT"
 }
