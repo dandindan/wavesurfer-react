@@ -1,5 +1,5 @@
 # Project Files Review
-# Generated: 2025-06-11T19-14-52.731Z
+# Generated: 2025-06-12T15-50-13.879Z
 # Total files: 16
 
 
@@ -1503,7 +1503,7 @@ module.exports = app;
 File: src/app.js
 ================================================================================
 
-// src/App.js
+// src/App.js - Updated with Enhanced Region Controls Only
 import React, { useCallback, useEffect } from 'react';
 import { useAudioSyncStore } from './store/audioSyncStore';
 import UltimateWaveSurfer from './components/UltimateWaveSurfer';
@@ -1548,6 +1548,15 @@ function UltimateApp() {
     validateAudioFile,
     getPerformanceStats
   } = useAudioSyncStore();
+
+  // 🎯 Helper function for formatting time
+  const formatTime = (seconds) => {
+    if (!seconds && seconds !== 0) return '--:--';
+    const minutes = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    const ms = Math.floor((seconds % 1) * 100);
+    return `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}.${ms.toString().padStart(2, '0')}`;
+  };
 
   // 📁 Ultimate file upload handler
   const handleFileUpload = useCallback((file) => {
@@ -1841,9 +1850,89 @@ function UltimateApp() {
           </div>
         </div>
 
-        {/* 📊 Region controls */}
+        {/* 📊 ENHANCED Region controls - ALL FUNCTIONALITY IN ONE PLACE */}
         <div className="control-section region-controls">
           <h3>📊 Regions</h3>
+          
+          {/* Row 1: Loop toggle and region count */}
+          <div className="region-info-row" style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: '12px',
+            padding: '8px 12px',
+            backgroundColor: 'rgba(255, 255, 255, 0.05)',
+            borderRadius: '6px',
+            fontSize: '0.85rem'
+          }}>
+            {/* Loop Regions Toggle */}
+            <label style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              cursor: 'pointer',
+              color: '#fff',
+              fontSize: '0.85rem'
+            }}>
+              <input
+                type="checkbox"
+                checked={window.ultimateWaveSurfer?.ultimate?.getLoopRegions() || false}
+                onChange={(e) => {
+                  const newValue = e.target.checked;
+                  if (window.ultimateWaveSurfer?.ultimate?.setLoopRegions) {
+                    window.ultimateWaveSurfer.ultimate.setLoopRegions(newValue);
+                  }
+                }}
+                style={{
+                  accentColor: '#4a9eff',
+                  width: '14px',
+                  height: '14px'
+                }}
+              />
+              <span>🔄 Loop</span>
+            </label>
+
+            {/* Region Count */}
+            <span style={{ 
+              color: '#4caf50', 
+              fontWeight: '500',
+              fontSize: '0.85rem'
+            }}>
+              📊 Count: {window.ultimateWaveSurfer?.ultimate?.getRegions()?.length || 0}
+            </span>
+          </div>
+
+          {/* Row 2: Current time and drag hint */}
+          <div className="region-status-row" style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: '12px',
+            padding: '6px 12px',
+            backgroundColor: 'rgba(74, 158, 255, 0.1)',
+            borderRadius: '6px',
+            fontSize: '0.8rem'
+          }}>
+            {/* Current Time Display */}
+            <span style={{ 
+              color: '#4a9eff', 
+              fontWeight: '600',
+              fontSize: '0.85rem'
+            }}>
+              ⏱️ {formatTime(currentTime)} / {formatTime(duration)}
+            </span>
+
+            {/* Drag Hint */}
+            <span style={{ 
+              color: '#888', 
+              fontSize: '0.75rem',
+              fontStyle: 'italic'
+            }}>
+              🎨 Drag to create
+            </span>
+          </div>
+
+          {/* Row 3: Action buttons */}
           <div className="controls-grid">
             <button 
               onClick={() => window.ultimateWaveSurfer?.ultimate?.clearAllRegions()}
@@ -1867,15 +1956,16 @@ function UltimateApp() {
             )}
           </div>
           
+          {/* Active Region Details */}
           {activeRegion && (
             <div className="active-region-info">
               <div className="region-details">
-                <span className="region-time">
+                <div className="region-time">
                   📊 {activeRegion.start.toFixed(3)}s - {activeRegion.end.toFixed(3)}s
-                </span>
-                <span className="region-duration">
+                </div>
+                <div className="region-duration">
                   Duration: {(activeRegion.end - activeRegion.start).toFixed(3)}s
-                </span>
+                </div>
               </div>
             </div>
           )}
@@ -2014,15 +2104,6 @@ function UltimateApp() {
     </div>
   );
 }
-
-// 🎯 Helper function
-const formatTime = (seconds) => {
-  if (!seconds && seconds !== 0) return '--:--';
-  const minutes = Math.floor(seconds / 60);
-  const secs = Math.floor(seconds % 60);
-  const ms = Math.floor((seconds % 1) * 100);
-  return `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}.${ms.toString().padStart(2, '0')}`;
-};
 
 export default UltimateApp;
 
@@ -2371,12 +2452,13 @@ File: src/assets/styles/main.css
 
 /**
  * File: src/assets/styles/main.css
- * Description: Main application styling
+ * Description: Main application styling - CORRECTED VERSION
  * 
  * Version History:
  * v1.0.0 (2025-05-18) - Initial implementation based on original HTML
  * v1.0.1 (2025-05-19) - Fixed corrupted CSS rule for waveform container
  * v1.0.2 (2025-05-19) - Updated container widths to 95% and fixed background colors
+ * v1.0.3 (2025-06-12) - Fixed duplicates and MPV layout issues
  */
 
 body {
@@ -2388,7 +2470,7 @@ body {
 }
 
 .container {
-  max-width: 1200px; /* Slightly wider container */
+  max-width: 1200px;
   margin: 0 auto;
 }
 
@@ -2411,23 +2493,21 @@ h1 {
 
 /* Single container for waveform, spectrogram and timeline */
 #waveform-container {
-  width: 95% !important; /* Force 95% width */
-  margin: 0 auto 20px auto !important; /* Center the container */
+  width: 95% !important;
+  margin: 0 auto 20px auto !important;
   background-color: #1a1a1a;
   border-radius: 5px;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
   position: relative;
-  /* Default height will include both waveform, spectrogram and timeline */
   height: 560px;
-  /* Makes sure content is visible */
   overflow: visible !important;
 }
 
 /* Only keep minimap separate */
 #minimap {
-  width: 95% !important; /* Force 95% width */
+  width: 95% !important;
   height: 40px;
-  margin: 0 auto 20px auto !important; /* Center the minimap */
+  margin: 0 auto 20px auto !important;
   background-color: #1a1a1a;
   border-radius: 5px;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
@@ -2439,7 +2519,7 @@ h1 {
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  width: 95%; /* Match waveform width */
+  width: 95%;
   max-width: 1200px;
   margin: 20px auto;
   padding: 15px;
@@ -2469,32 +2549,6 @@ h1 {
   color: #0dcaf0;
 }
 
-input[type='range'] {
-  flex-grow: 1;
-  margin: 0 5px;
-  height: 8px;
-  border-radius: 4px;
-  background: #555555;
-  outline: none;
-}
-
-input[type='range']::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: #4363ca;
-  cursor: pointer;
-}
-
-input[type='range']::-moz-range-thumb {
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: #4363ca;
-  cursor: pointer;
-}
-
 .checkbox-container {
   display: flex;
   align-items: center;
@@ -2508,35 +2562,8 @@ input[type='range']::-moz-range-thumb {
   justify-content: center;
   margin: 20px 0;
   flex-wrap: wrap;
-  width: 95%; /* Match waveform width */
+  width: 95%;
   margin: 20px auto;
-}
-
-button {
-  background-color: #4363ca;
-  color: #ffffff;
-  padding: 10px 20px;
-  border: none;
-  border-radius: 5px;
-  margin: 5px 10px;
-  cursor: pointer;
-}
-
-button:hover {
-  background-color: #357ea8;
-}
-
-button.danger {
-  background-color: #dc3545;
-}
-
-button.danger:hover {
-  background-color: #c82333;
-}
-
-button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
 }
 
 /* Loading container */
@@ -2586,7 +2613,7 @@ button:disabled {
   margin: 10px 0;
   background-color: #222;
   border-radius: 5px;
-  width: 95%; /* Match waveform width */
+  width: 95%;
   margin: 10px auto;
 }
 
@@ -2617,7 +2644,7 @@ button:disabled {
   border-radius: 8px;
   text-align: center;
   animation: fadeIn 0.3s ease-in;
-  width: 95%; /* Match waveform width */
+  width: 95%;
   margin: 15px auto;
 }
 
@@ -2669,39 +2696,15 @@ button:disabled {
 .current-time {
   text-align: center;
   margin-bottom: 10px;
-  width: 95%; /* Match waveform width */
+  width: 95%;
   margin: 0 auto 10px auto;
   color: #0dcaf0;
   font-weight: bold;
 }
 
-/* Responsive adjustments */
-@media (max-width: 768px) {
-  #waveform-container {
-    height: 400px;
-  }
-
-  .slider-container {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .slider-label {
-    margin-bottom: 5px;
-  }
-
-  .controls-row {
-    flex-direction: column;
-  }
-
-  .checkbox-container {
-    margin: 10px 0;
-  }
-}
 /* ========================================= */
-/* 🎯 ULTIMATE ENHANCEMENTS - ADD BELOW    */
+/* 🎯 ULTIMATE ENHANCEMENTS - CORRECTED    */
 /* ========================================= */
-/* Add these styles to src/assets/styles/main.css */
 
 /* 🎯 Ultimate App Enhancements */
 .ultimate-app {
@@ -2781,16 +2784,6 @@ button:disabled {
   }
 }
 
-@keyframes gradientShift {
-  0%,
-  100% {
-    background-position: 0% 50%;
-  }
-  50% {
-    background-position: 100% 50%;
-  }
-}
-
 .app-stats {
   display: flex;
   justify-content: center;
@@ -2828,10 +2821,10 @@ button:disabled {
   }
 }
 
-/* 🎮 Ultimate Controls Grid */
+/* 🎮 Ultimate Controls Grid - FIXED PROPORTIONS */
 .ultimate-controls {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  grid-template-columns: 0.8fr 1.2fr 1.2fr 1.8fr !important; /* Playback smaller, sliders bigger, regions bigger, MPV biggest */
   gap: 25px;
   margin: 30px 0;
   padding: 30px;
@@ -2839,6 +2832,7 @@ button:disabled {
   border-radius: 15px;
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.7);
   border: 1px solid rgba(74, 158, 255, 0.1);
+  overflow: visible !important;
 }
 
 .control-section {
@@ -2847,6 +2841,7 @@ button:disabled {
   padding: 20px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   transition: all 0.3s ease;
+  overflow: visible !important;
 }
 
 .control-section:hover {
@@ -2871,7 +2866,27 @@ button:disabled {
   gap: 12px;
 }
 
-/* 🎵 Ultimate Buttons */
+/* 🎬 MPV Section - SPANS FULL WIDTH OF UPPER ROW */
+.control-section.mpv-section {
+  grid-column: 1 / -1 !important; /* Span all 4 columns */
+  min-width: 100% !important;
+  width: 100% !important;
+  overflow: visible !important;
+  margin-top: 15px; /* Small gap from upper row */
+}
+
+/* 🎮 Ultimate MPV Controller - FIXED LAYOUT */
+.ultimate-mpv-controller {
+  display: flex !important;
+  gap: 6px !important;
+  align-items: center !important;
+  flex-wrap: nowrap !important;
+  width: 100% !important;
+  overflow: visible !important;
+  justify-content: flex-start !important;
+}
+
+/* 🎵 Ultimate Buttons - UNIFIED STYLING */
 button {
   background: linear-gradient(145deg, #4a9eff, #08c3f2);
   color: white;
@@ -2954,25 +2969,19 @@ button:disabled {
   box-shadow: 0 4px 15px rgba(255, 152, 0, 0.4);
 }
 
-/* 🎬 MPV Controller Styles */
-.ultimate-mpv-controller {
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
-}
-
+/* 🎬 MPV Launch Button */
 .mpv-launch {
-  font-size: 1.2rem;
-  padding: 15px 25px;
+  font-size: 0.8rem !important;
+  padding: 10px 12px !important;
   background: linear-gradient(145deg, #f44336, #e57373);
   box-shadow: 0 6px 20px rgba(244, 67, 54, 0.4);
-  border-radius: 12px;
-  text-transform: uppercase;
-  letter-spacing: 1px;
+  border-radius: 8px !important;
+  min-width: 110px !important;
+  white-space: nowrap;
 }
 
 .mpv-launch.connected {
-  background: linear-gradient(145deg, #4caf50, #66bb6a);
+  background: linear-gradient(145deg, #4caf50, #66bb6a) !important;
   box-shadow: 0 6px 20px rgba(76, 175, 80, 0.5);
   animation: connectedGlow 2s ease infinite;
 }
@@ -2987,87 +2996,7 @@ button:disabled {
   }
 }
 
-.mpv-controls {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(50px, 1fr));
-  gap: 10px;
-}
-
-.control-btn {
-  aspect-ratio: 1;
-  padding: 12px;
-  font-size: 1.3rem;
-  min-width: 50px;
-  border-radius: 10px;
-}
-
-.mpv-status {
-  background: linear-gradient(145deg, #2a2a2a, #1e1e1e);
-  border-radius: 10px;
-  padding: 15px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.status-indicator {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 8px;
-}
-
-.status-indicator.connected .status-text {
-  color: #4caf50;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.status-indicator.disconnected .status-text {
-  color: #f44336;
-  font-weight: 600;
-}
-
-.sync-info {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  font-size: 0.9rem;
-}
-
-.sync-accuracy {
-  color: #4a9eff;
-  font-weight: 500;
-}
-
-.command-queue {
-  color: #b0b0b0;
-  font-size: 0.8rem;
-}
-
-/* 📱 Range Controls */
-.range-control {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.range-info {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 0.9rem;
-}
-
-.range-info span {
-  color: #4a9eff;
-  font-weight: 600;
-}
-
-.range-info small {
-  color: #888;
-  font-size: 0.75rem;
-}
-
+/* 📱 Range Controls - UNIFIED STYLING */
 input[type='range'] {
   -webkit-appearance: none;
   appearance: none;
@@ -3105,6 +3034,29 @@ input[type='range']::-moz-range-thumb {
   cursor: pointer;
   border: none;
   box-shadow: 0 4px 12px rgba(74, 158, 255, 0.4);
+}
+
+.range-control {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.range-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.9rem;
+}
+
+.range-info span {
+  color: #4a9eff;
+  font-weight: 600;
+}
+
+.range-info small {
+  color: #888;
+  font-size: 0.75rem;
 }
 
 /* 📊 Region Info */
@@ -3417,7 +3369,7 @@ kbd {
   }
 
   .ultimate-controls {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr !important;
     gap: 20px;
     padding: 20px;
   }
@@ -3445,6 +3397,15 @@ kbd {
   .error-content {
     max-width: none;
   }
+
+  .control-section.mpv-section {
+    min-width: 100% !important;
+  }
+
+  .ultimate-mpv-controller {
+    flex-wrap: wrap !important;
+    gap: 4px !important;
+  }
 }
 
 @media (max-width: 480px) {
@@ -3465,13 +3426,14 @@ kbd {
     padding: 15px;
   }
 
-  .mpv-controls {
-    grid-template-columns: repeat(4, 1fr);
+  .ultimate-mpv-controller {
+    flex-wrap: wrap !important;
+    justify-content: center !important;
   }
 
-  .control-btn {
-    font-size: 1.1rem;
-    padding: 10px;
+  .mpv-launch {
+    min-width: 100px !important;
+    font-size: 0.75rem !important;
   }
 }
 
@@ -4254,9 +4216,60 @@ export default StatusBar;
 File: src/components/UltimateMPVController.js
 ================================================================================
 
-// src/components/UltimateMPVController.js - Updated with Single Row Layout & Combined Play/Pause
-import React, { useEffect, useCallback, useRef } from 'react';
+// src/components/UltimateMPVController.js - Updated with ONE ROW & Proper Mute Toggle
+import React, { useEffect, useCallback, useRef, useState } from 'react';
 import { useAudioSyncStore } from '../store/audioSyncStore';
+
+// 🔇 Mute Button Component - Tracks state like WS Audio toggle
+const MuteButton = ({ onClick }) => {
+  const [isMuted, setIsMuted] = useState(false);
+  
+  const handleClick = async () => {
+    try {
+      await onClick();
+      // Toggle local state
+      setIsMuted(!isMuted);
+    } catch (error) {
+      console.error('Mute toggle error:', error);
+    }
+  };
+  
+  return (
+    <button 
+      onClick={handleClick}
+      title="Toggle MPV Mute"
+      className={`mpv-mute-toggle ${isMuted ? 'muted' : ''}`}
+      style={{
+        background: isMuted 
+          ? 'linear-gradient(145deg, #f44336, #e57373)' // Red when muted
+          : 'linear-gradient(145deg, #4a9eff, #08c3f2)', // Blue when unmuted
+        color: 'white',
+        border: 'none',
+        padding: '10px',
+        borderRadius: '8px',
+        fontSize: '0.9rem',
+        cursor: 'pointer',
+        transition: 'all 0.3s ease',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        boxShadow: isMuted 
+          ? '0 4px 15px rgba(244, 67, 54, 0.4)'
+          : '0 4px 15px rgba(74, 158, 255, 0.4)',
+        minWidth: '40px',
+        animation: isMuted ? 'mpvMutedPulse 1.5s ease infinite' : 'none'
+      }}
+      onMouseEnter={(e) => {
+        e.target.style.transform = 'translateY(-2px)';
+      }}
+      onMouseLeave={(e) => {
+        e.target.style.transform = 'translateY(0)';
+      }}
+    >
+      <i className={`fas ${isMuted ? 'fa-volume-mute' : 'fa-volume-up'}`}></i>
+    </button>
+  );
+};
 
 const UltimateMPVController = ({ 
   onStatusChange,
@@ -4619,17 +4632,22 @@ const UltimateMPVController = ({
   }, []);
   
   return (
-    <div className="ultimate-mpv-controller">
-      {/* 🎮 Single Row Controls Layout */}
+    <div className="ultimate-mpv-controller" style={{
+      width: '100%',
+      minWidth: '100%'
+    }}>
+      {/* 🎮 SINGLE ROW - Launch Button + ALL Controls Together */}
       <div style={{
         display: 'flex',
         alignItems: 'center',
-        gap: '12px',
-        flexWrap: 'wrap',
-        justifyContent: 'space-between'
+        gap: '8px',
+        width: '100%',
+        minWidth: '100%',
+        flexWrap: 'nowrap', // Prevent wrapping - keep everything in one row
+        overflow: 'visible' // Make sure nothing gets cut off
       }}>
         
-        {/* 🚀 Launch Button */}
+        {/* 🚀 Launch/Connected Button */}
         <button 
           className={`mpv-launch ${mpvConnected ? 'connected' : ''}`}
           onClick={launchMPV}
@@ -4641,35 +4659,31 @@ const UltimateMPVController = ({
               : 'linear-gradient(145deg, #f44336, #e57373)',
             color: 'white',
             border: 'none',
-            padding: '12px 20px',
-            borderRadius: '10px',
-            fontSize: '1rem',
+            padding: '10px 12px',
+            borderRadius: '8px',
+            fontSize: '0.8rem',
             fontWeight: '600',
             cursor: !serverFilePathRef.current || mpvConnected ? 'not-allowed' : 'pointer',
             transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
             display: 'flex',
             alignItems: 'center',
-            gap: '8px',
+            gap: '4px',
             boxShadow: mpvConnected 
               ? '0 4px 15px rgba(76, 175, 80, 0.4)' 
               : '0 4px 15px rgba(244, 67, 54, 0.4)',
-            opacity: !serverFilePathRef.current ? 0.5 : 1
+            opacity: !serverFilePathRef.current ? 0.5 : 1,
+            minWidth: '110px',
+            justifyContent: 'center',
+            whiteSpace: 'nowrap'
           }}
         >
-          {mpvConnected ? '🎯 MPV CONNECTED' : '🚀 LAUNCH MPV'}
+          {mpvConnected ? '🎯 CONNECTED' : '🚀 LAUNCH'}
         </button>
 
-        {/* 🎮 Playback Controls - Only show when connected */}
+        {/* 🎮 ALL Control Buttons - Only show when connected */}
         {mpvConnected && (
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            flex: '1',
-            justifyContent: 'center'
-          }}>
-            
-            {/* Combined Play/Pause Button - Same style as WaveSurfer */}
+          <>
+            {/* Play/Pause Button */}
             <button 
               onClick={controls.playPause}
               title="Play/Pause (Space)"
@@ -4679,30 +4693,28 @@ const UltimateMPVController = ({
                   : 'linear-gradient(145deg, #4a9eff, #08c3f2)',
                 color: 'white',
                 border: 'none',
-                padding: '12px 16px',
-                borderRadius: '10px',
-                fontSize: '1.1rem',
-                fontWeight: '600',
+                padding: '10px',
+                borderRadius: '8px',
+                fontSize: '0.9rem',
                 cursor: 'pointer',
-                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                transition: 'all 0.3s ease',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '8px',
-                minWidth: '100px',
                 justifyContent: 'center',
                 boxShadow: isPlaying 
                   ? '0 4px 15px rgba(76, 175, 80, 0.4)' 
-                  : '0 4px 15px rgba(74, 158, 255, 0.4)'
+                  : '0 4px 15px rgba(74, 158, 255, 0.4)',
+                minWidth: '36px',
+                flexShrink: 0
               }}
               onMouseEnter={(e) => {
-                e.target.style.transform = 'translateY(-2px) scale(1.02)';
+                e.target.style.transform = 'translateY(-2px)';
               }}
               onMouseLeave={(e) => {
-                e.target.style.transform = 'translateY(0) scale(1)';
+                e.target.style.transform = 'translateY(0)';
               }}
             >
               <i className={`fas ${isPlaying ? 'fa-pause' : 'fa-play'}`}></i>
-              {isPlaying ? 'Pause' : 'Play'}
             </button>
 
             {/* Stop Button */}
@@ -4713,25 +4725,23 @@ const UltimateMPVController = ({
                 background: 'linear-gradient(145deg, #666, #555)',
                 color: 'white',
                 border: 'none',
-                padding: '12px',
-                borderRadius: '10px',
-                fontSize: '1.1rem',
+                padding: '10px',
+                borderRadius: '8px',
+                fontSize: '0.9rem',
                 cursor: 'pointer',
                 transition: 'all 0.3s ease',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                width: '48px',
-                height: '48px',
-                boxShadow: '0 4px 15px rgba(102, 102, 102, 0.3)'
+                boxShadow: '0 4px 15px rgba(102, 102, 102, 0.3)',
+                minWidth: '36px',
+                flexShrink: 0
               }}
               onMouseEnter={(e) => {
                 e.target.style.transform = 'translateY(-2px)';
-                e.target.style.background = 'linear-gradient(145deg, #777, #666)';
               }}
               onMouseLeave={(e) => {
                 e.target.style.transform = 'translateY(0)';
-                e.target.style.background = 'linear-gradient(145deg, #666, #555)';
               }}
             >
               <i className="fas fa-stop"></i>
@@ -4745,17 +4755,17 @@ const UltimateMPVController = ({
                 background: 'linear-gradient(145deg, #4a9eff, #08c3f2)',
                 color: 'white',
                 border: 'none',
-                padding: '12px',
-                borderRadius: '10px',
-                fontSize: '1.1rem',
+                padding: '10px',
+                borderRadius: '8px',
+                fontSize: '0.9rem',
                 cursor: 'pointer',
                 transition: 'all 0.3s ease',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                width: '48px',
-                height: '48px',
-                boxShadow: '0 4px 15px rgba(74, 158, 255, 0.3)'
+                boxShadow: '0 4px 15px rgba(74, 158, 255, 0.3)',
+                minWidth: '36px',
+                flexShrink: 0
               }}
               onMouseEnter={(e) => {
                 e.target.style.transform = 'translateY(-2px)';
@@ -4775,17 +4785,17 @@ const UltimateMPVController = ({
                 background: 'linear-gradient(145deg, #4a9eff, #08c3f2)',
                 color: 'white',
                 border: 'none',
-                padding: '12px',
-                borderRadius: '10px',
-                fontSize: '1.1rem',
+                padding: '10px',
+                borderRadius: '8px',
+                fontSize: '0.9rem',
                 cursor: 'pointer',
                 transition: 'all 0.3s ease',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                width: '48px',
-                height: '48px',
-                boxShadow: '0 4px 15px rgba(74, 158, 255, 0.3)'
+                boxShadow: '0 4px 15px rgba(74, 158, 255, 0.3)',
+                minWidth: '36px',
+                flexShrink: 0
               }}
               onMouseEnter={(e) => {
                 e.target.style.transform = 'translateY(-2px)';
@@ -4805,17 +4815,17 @@ const UltimateMPVController = ({
                 background: 'linear-gradient(145deg, #ff9800, #ffb74d)',
                 color: 'white',
                 border: 'none',
-                padding: '12px',
-                borderRadius: '10px',
-                fontSize: '1rem',
+                padding: '10px',
+                borderRadius: '8px',
+                fontSize: '0.9rem',
                 cursor: 'pointer',
                 transition: 'all 0.3s ease',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                width: '48px',
-                height: '48px',
-                boxShadow: '0 4px 15px rgba(255, 152, 0, 0.3)'
+                boxShadow: '0 4px 15px rgba(255, 152, 0, 0.3)',
+                minWidth: '36px',
+                flexShrink: 0
               }}
               onMouseEnter={(e) => {
                 e.target.style.transform = 'translateY(-2px)';
@@ -4835,17 +4845,17 @@ const UltimateMPVController = ({
                 background: 'linear-gradient(145deg, #ff9800, #ffb74d)',
                 color: 'white',
                 border: 'none',
-                padding: '12px',
-                borderRadius: '10px',
-                fontSize: '1rem',
+                padding: '10px',
+                borderRadius: '8px',
+                fontSize: '0.9rem',
                 cursor: 'pointer',
                 transition: 'all 0.3s ease',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                width: '48px',
-                height: '48px',
-                boxShadow: '0 4px 15px rgba(255, 152, 0, 0.3)'
+                boxShadow: '0 4px 15px rgba(255, 152, 0, 0.3)',
+                minWidth: '36px',
+                flexShrink: 0
               }}
               onMouseEnter={(e) => {
                 e.target.style.transform = 'translateY(-2px)';
@@ -4857,37 +4867,12 @@ const UltimateMPVController = ({
               <i className="fas fa-volume-up"></i>
             </button>
 
-            {/* Mute Toggle */}
-            <button 
-              onClick={controls.toggleMute}
-              title="Toggle Mute"
-              style={{
-                background: 'linear-gradient(145deg, #f44336, #e57373)',
-                color: 'white',
-                border: 'none',
-                padding: '12px',
-                borderRadius: '10px',
-                fontSize: '1rem',
-                cursor: 'pointer',
-                transition: 'all 0.3s ease',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: '48px',
-                height: '48px',
-                boxShadow: '0 4px 15px rgba(244, 67, 54, 0.3)'
-              }}
-              onMouseEnter={(e) => {
-                e.target.style.transform = 'translateY(-2px)';
-              }}
-              onMouseLeave={(e) => {
-                e.target.style.transform = 'translateY(0)';
-              }}
-            >
-              <i className="fas fa-volume-mute"></i>
-            </button>
+            {/* Mute Toggle - State tracking like WS Audio */}
+            <div style={{ flexShrink: 0 }}>
+              <MuteButton onClick={controls.toggleMute} />
+            </div>
 
-            {/* Fullscreen */}
+            {/* Fullscreen - MUST BE INCLUDED IN THE BOX */}
             <button 
               onClick={controls.toggleFullscreen}
               title="Toggle Fullscreen"
@@ -4895,17 +4880,17 @@ const UltimateMPVController = ({
                 background: 'linear-gradient(145deg, #9c27b0, #ba68c8)',
                 color: 'white',
                 border: 'none',
-                padding: '12px',
-                borderRadius: '10px',
-                fontSize: '1rem',
+                padding: '10px',
+                borderRadius: '8px',
+                fontSize: '0.9rem',
                 cursor: 'pointer',
                 transition: 'all 0.3s ease',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                width: '48px',
-                height: '48px',
-                boxShadow: '0 4px 15px rgba(156, 39, 176, 0.3)'
+                boxShadow: '0 4px 15px rgba(156, 39, 176, 0.3)',
+                minWidth: '36px',
+                flexShrink: 0
               }}
               onMouseEnter={(e) => {
                 e.target.style.transform = 'translateY(-2px)';
@@ -4916,32 +4901,21 @@ const UltimateMPVController = ({
             >
               <i className="fas fa-expand"></i>
             </button>
-          </div>
-        )}
-
-        {/* 📊 Status Display */}
-        {mpvConnected && (
-          <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'flex-end',
-            fontSize: '0.85rem',
-            color: '#b0b0b0',
-            minWidth: '120px'
-          }}>
-            <div style={{
-              color: '#4caf50',
-              fontWeight: '600',
-              marginBottom: '2px'
-            }}>
-              🎯 SYNCED
-            </div>
-            <div style={{ color: '#4a9eff' }}>
-              {isPlaying ? '▶️ Playing' : '⏸️ Paused'}
-            </div>
-          </div>
+          </>
         )}
       </div>
+
+      {/* 🎨 CSS for Mute Toggle Animation */}
+      <style>{`
+        @keyframes mpvMutedPulse {
+          0%, 100% {
+            opacity: 1;
+          }
+          50% {
+            opacity: 0.7;
+          }
+        }
+      `}</style>
     </div>
   );
 };
@@ -4952,7 +4926,7 @@ export default UltimateMPVController;
 File: src/components/UltimateWaveSurfer.js
 ================================================================================
 
-// src/components/UltimateWaveSurfer.js - v21 Enhanced MPV Controls Layout & Styling
+// src/components/UltimateWaveSurfer.js - v22 COMPLETE - Cleaned Up
 import React, { useRef, useMemo, useCallback, useEffect, useState } from 'react';
 import { useWavesurfer } from '@wavesurfer/react';
 import RegionsPlugin from 'wavesurfer.js/dist/plugins/regions.js';
@@ -4979,7 +4953,7 @@ const UltimateWaveSurfer = ({
   
   // 🎯 Ultimate Sync System State
   const [syncActive, setSyncActive] = useState(false);
-  const [syncMode, setSyncMode] = useState('idle'); // 'idle', 'wavesurfer-master', 'mpv-master'
+  const [syncMode, setSyncMode] = useState('idle');
   const [syncAccuracy, setSyncAccuracy] = useState(0);
   const [lastSyncTime, setLastSyncTime] = useState(0);
   
@@ -5021,7 +4995,7 @@ const UltimateWaveSurfer = ({
     updateSyncAccuracy
   } = useAudioSyncStore();
 
-  // 🚀 Create regions plugin SEPARATELY (following official example)
+  // 🚀 Create regions plugin SEPARATELY
   const regions = useMemo(() => RegionsPlugin.create(), []);
 
   // 🎨 Random color generator for regions
@@ -5061,9 +5035,8 @@ const UltimateWaveSurfer = ({
       height: 50,
       waveColor: '#777',
       progressColor: '#08c3f2',
-      // Make minimap regions much brighter and more visible
-      regionColor: 'rgba(74, 158, 255, 0.8)', // Bright blue with high opacity
-      regionBorderColor: '#4a9eff' // Bright border
+      regionColor: 'rgba(74, 158, 255, 0.8)',
+      regionBorderColor: '#4a9eff'
     })
   ], [regions]);
 
@@ -5071,19 +5044,18 @@ const UltimateWaveSurfer = ({
   const { wavesurfer, isReady, currentTime: wsCurrentTime } = useWavesurfer({
     container: containerRef,
     height,
-    waveColor: '#777', // Match minimap grey
-    progressColor: '#08c3f2', // Match minimap blue
+    waveColor: '#777',
+    progressColor: '#08c3f2',
     cursorColor: '#ff5722',
     cursorWidth: 2,
     normalize: true,
     responsive: true,
-    hideScrollbar: false, // Enable scrollbar for zoom navigation
+    hideScrollbar: false,
     url: audioUrl,
     plugins
   });
 
-  // 🎯 Setup regions after decode (following official example with loop logic)
-  // Use ref to prevent multiple setups
+  // 🎯 Setup regions after decode - Use ref to prevent multiple setups
   const isRegionsSetupRef = useRef(false);
   
   useEffect(() => {
@@ -5094,27 +5066,24 @@ const UltimateWaveSurfer = ({
       isRegionsSetupRef.current = true;
       
       try {
-        // Enable drag selection (official pattern)
+        // Enable drag selection
         regions.enableDragSelection({
           color: 'rgba(74, 158, 255, 0.1)',
         });
 
-        // Set up event handlers (official pattern with loop logic)
+        // Set up event handlers
         let activeRegionRef = null;
 
-        // Region in - track active region
         const handleRegionIn = (region) => {
           console.log('🎵 Region in:', region);
           activeRegionRef = region;
           setActiveRegion(region);
         };
 
-        // Region out - handle looping
         const handleRegionOut = (region) => {
           console.log('🎵 Region out:', region, 'Loop enabled:', loopRegionsRef.current);
           if (activeRegionRef === region) {
             if (loopRegionsRef.current) {
-              // Loop the region
               region.play();
               console.log('🔄 Looping region:', region);
             } else {
@@ -5125,21 +5094,15 @@ const UltimateWaveSurfer = ({
           }
         };
 
-        // Region clicked - play and change color
         const handleRegionClick = (region, e) => {
           e.stopPropagation();
           console.log('🎵 Region clicked:', region);
           
           activeRegionRef = region;
           setActiveRegion(region);
-          
-          // Play the region (official pattern)
           region.play(true);
-          
-          // Change color on click (official pattern)
           region.setOptions({ color: randomColor() });
           
-          // Update global state
           const duration = wavesurfer.getDuration();
           if (duration > 0) {
             wavesurfer.seekTo(region.start / duration);
@@ -5149,20 +5112,17 @@ const UltimateWaveSurfer = ({
           if (onRegionClick) onRegionClick(region);
         };
 
-        // Region created - FIX: Use functional update to prevent count issues
         const handleRegionCreated = (region) => {
           console.log('🎵 Region created ONCE:', region);
           addRegion(region);
           setStatus(`Region created: ${region.start.toFixed(2)}s - ${region.end.toFixed(2)}s`);
         };
 
-        // Region updated
         const handleRegionUpdated = (region) => {
           console.log('🎵 Region updated:', region);
           setActiveRegion(region);
         };
 
-        // Reset active region on waveform click (official pattern)
         const handleInteraction = () => {
           activeRegionRef = null;
           setActiveRegion(null);
@@ -5178,7 +5138,6 @@ const UltimateWaveSurfer = ({
 
         console.log('✅ Regions setup complete with loop functionality');
         
-        // Store cleanup functions for proper removal
         return () => {
           console.log('🧹 Cleaning up region event listeners');
           regions.off('region-in', handleRegionIn);
@@ -5197,7 +5156,6 @@ const UltimateWaveSurfer = ({
 
     let cleanup;
     
-    // Wait for decode or setup immediately if ready
     if (wavesurfer.getDuration() > 0) {
       cleanup = setupRegions();
     } else {
@@ -5206,20 +5164,17 @@ const UltimateWaveSurfer = ({
       });
     }
 
-    // Cleanup function
     return () => {
       if (cleanup) cleanup();
     };
-  }, [wavesurfer, isReady]); // Removed deps that cause re-runs
+  }, [wavesurfer, isReady, regions, setActiveRegion, addRegion, setStatus, randomColor, setCurrentTime, onRegionClick]);
 
   // 🔄 Update ref when state changes
   useEffect(() => {
     loopRegionsRef.current = loopRegions;
   }, [loopRegions]);
 
-  // 🚀 Ultimate Sync System Integration
-  
-  // Professional command queue system
+  // 🚀 Professional command queue system
   const queueMPVCommand = useCallback(async (command, priority = 'normal') => {
     if (!mpvConnected) return false;
     
@@ -5293,7 +5248,6 @@ const UltimateWaveSurfer = ({
     const mpvTime = mpvCurrentTime || 0;
     const timeDrift = Math.abs(wsTime - mpvTime);
     
-    // Add to drift history
     driftHistoryRef.current.push({
       time: Date.now(),
       drift: timeDrift,
@@ -5305,7 +5259,6 @@ const UltimateWaveSurfer = ({
       driftHistoryRef.current.shift();
     }
     
-    // Update performance stats
     const avgDrift = driftHistoryRef.current.reduce((sum, d) => sum + d.drift, 0) / driftHistoryRef.current.length;
     performanceStatsRef.current.avgAccuracy = avgDrift;
     
@@ -5322,7 +5275,6 @@ const UltimateWaveSurfer = ({
       const wsPlaying = wavesurfer.isPlaying();
       const timeDrift = Math.abs(wsTime - mpvTime);
       
-      // Time sync with threshold
       if (timeDrift > 0.05) {
         const duration = wavesurfer.getDuration() || 1;
         wavesurfer.seekTo(mpvTime / duration);
@@ -5330,7 +5282,6 @@ const UltimateWaveSurfer = ({
         console.log(`🔄 WS←MPV time sync: ${wsTime.toFixed(3)}s → ${mpvTime.toFixed(3)}s`);
       }
       
-      // Play state sync
       if (wsPlaying !== mpvPlaying) {
         if (mpvPlaying) {
           wavesurfer.play();
@@ -5356,14 +5307,12 @@ const UltimateWaveSurfer = ({
       const wsPlaying = wavesurfer.isPlaying();
       const timeDrift = Math.abs(wsTime - (mpvCurrentTime || 0));
       
-      // Time sync with threshold
       if (timeDrift > 0.05) {
         await queueMPVCommand(['seek', wsTime, 'absolute', 'exact'], 'high');
         performanceStatsRef.current.driftCorrections++;
         console.log(`🔄 MPV←WS time sync: ${(mpvCurrentTime || 0).toFixed(3)}s → ${wsTime.toFixed(3)}s`);
       }
       
-      // Play state sync
       if (wsPlaying !== mpvPlaying) {
         await queueMPVCommand(['set_property', 'pause', !wsPlaying], 'high');
         console.log(`🔄 MPV←WS play state: ${mpvPlaying} → ${wsPlaying}`);
@@ -5384,20 +5333,17 @@ const UltimateWaveSurfer = ({
       return;
     }
     
-    // Region playback - WaveSurfer is master
     if (activeRegion) {
       syncModeRef.current = 'wavesurfer-master';
       setSyncMode('wavesurfer-master');
       return;
     }
     
-    // Check who initiated the last change
     const wsTime = wavesurfer?.getCurrentTime() || 0;
     const mpvTime = mpvCurrentTime || 0;
     const wsChange = Math.abs(wsTime - lastWsTimeRef.current);
     const mpvChange = Math.abs(mpvTime - lastMpvTimeRef.current);
     
-    // If significant change detected, determine master
     if (wsChange > 0.1) {
       syncModeRef.current = 'wavesurfer-master';
       setSyncMode('wavesurfer-master');
@@ -5406,7 +5352,6 @@ const UltimateWaveSurfer = ({
       setSyncMode('mpv-master');
     }
     
-    // Update last known times
     lastWsTimeRef.current = wsTime;
     lastMpvTimeRef.current = mpvTime;
     
@@ -5417,25 +5362,19 @@ const UltimateWaveSurfer = ({
     if (!syncActiveRef.current || !mpvConnected || !wavesurfer) return;
     
     try {
-      // Calculate current sync accuracy
       const accuracy = calculateSyncAccuracy();
       setSyncAccuracy(accuracy);
       setLastSyncTime(Date.now());
       
-      // Update global sync accuracy
       updateSyncAccuracy(accuracy);
-      
-      // Determine sync mode
       determineSyncMode();
       
-      // Execute appropriate sync direction
       if (syncModeRef.current === 'wavesurfer-master') {
         await syncMPVToWaveSurfer();
       } else if (syncModeRef.current === 'mpv-master') {
         await syncWaveSurferToMPV();
       }
       
-      // Update status
       if (accuracy < 0.05) {
         setStatus(`🎯 Perfect Sync: ${(accuracy * 1000).toFixed(0)}ms (${syncModeRef.current})`);
       } else {
@@ -5456,7 +5395,6 @@ const UltimateWaveSurfer = ({
     syncActiveRef.current = true;
     setSyncActive(true);
     
-    // Reset performance stats
     performanceStatsRef.current = {
       syncEvents: 0,
       driftCorrections: 0,
@@ -5464,9 +5402,7 @@ const UltimateWaveSurfer = ({
       lastReset: Date.now()
     };
     
-    // Start sync loop - 800ms interval
     syncIntervalRef.current = setInterval(runSyncLoop, 800);
-    
     setStatus('🎯 Ultimate Sync System Active');
     
   }, [mpvConnected, wavesurfer, runSyncLoop, setStatus]);
@@ -5487,7 +5423,6 @@ const UltimateWaveSurfer = ({
       syncIntervalRef.current = null;
     }
     
-    // Clear command queue
     commandQueueRef.current.forEach(cmd => {
       cmd.reject(new Error('Sync stopped'));
     });
@@ -5535,7 +5470,6 @@ const UltimateWaveSurfer = ({
       setLoading(false);
       setStatus('🎯 Ultimate WaveSurfer ready!');
       
-      // Apply settings
       try {
         if (playbackRate !== 1.0) {
           wavesurfer.setPlaybackRate(playbackRate);
@@ -5558,7 +5492,6 @@ const UltimateWaveSurfer = ({
   useEffect(() => {
     if (wavesurfer && isReady) {
       wavesurfer.ultimate = {
-        // Core controls
         seekTo: (time) => {
           try {
             const duration = wavesurfer.getDuration();
@@ -5622,7 +5555,6 @@ const UltimateWaveSurfer = ({
           }
         },
         
-        // Region controls
         createRegion: (start, end, options = {}) => {
           try {
             return regions.addRegion({
@@ -5657,7 +5589,6 @@ const UltimateWaveSurfer = ({
           }
         },
         
-        // Loop control
         setLoopRegions: (loop) => {
           setLoopRegions(loop);
           loopRegionsRef.current = loop;
@@ -5666,7 +5597,6 @@ const UltimateWaveSurfer = ({
         
         getLoopRegions: () => loopRegionsRef.current,
         
-        // Ultimate Sync API
         sync: {
           start: startSync,
           stop: stopSync,
@@ -5682,7 +5612,6 @@ const UltimateWaveSurfer = ({
           })
         },
         
-        // Utility
         setVolume: (volume) => {
           try {
             wavesurfer.setVolume(Math.max(0, Math.min(1, volume)));
@@ -5699,7 +5628,6 @@ const UltimateWaveSurfer = ({
           }
         },
         
-        // Debug
         getDebugInfo: () => ({
           isReady,
           duration: wavesurfer?.getDuration() || 0,
@@ -5710,7 +5638,6 @@ const UltimateWaveSurfer = ({
         })
       };
       
-      // Global access for debugging
       if (process.env.NODE_ENV === 'development') {
         window.ultimateWaveSurfer = wavesurfer;
         window.ultimateSync = {
@@ -5724,7 +5651,7 @@ const UltimateWaveSurfer = ({
         console.log('🎯 Ultimate WaveSurfer API ready');
       }
     }
-  }, [wavesurfer, isReady, regions, setCurrentTime, setIsPlaying, setActiveRegion, setStatus, randomColor]);
+  }, [wavesurfer, isReady, regions, setCurrentTime, setIsPlaying, setActiveRegion, setStatus, randomColor, startSync, stopSync, triggerManualSync, syncActive, syncMode, syncAccuracy, setLoopRegions]);
 
   // 🔄 Sync time updates
   useEffect(() => {
@@ -5782,20 +5709,36 @@ const UltimateWaveSurfer = ({
     }
   }, [isMuted, wavesurfer, isReady]);
 
-  // 🎯 Format time helper
-  const formatTime = (seconds) => {
-    if (!seconds && seconds !== 0) return '--:--';
-    const minutes = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    const ms = Math.floor((seconds % 1) * 100);
-    return `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}.${ms.toString().padStart(2, '0')}`;
-  };
+  // 🧹 Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      console.log('🧹 UltimateWaveSurfer cleanup...');
+      
+      if (syncActiveRef.current) {
+        stopSync();
+      }
+      
+      if (syncIntervalRef.current) {
+        clearInterval(syncIntervalRef.current);
+        syncIntervalRef.current = null;
+      }
+      
+      commandQueueRef.current.forEach(cmd => {
+        cmd.reject(new Error('Component unmounted'));
+      });
+      commandQueueRef.current = [];
+      
+      syncActiveRef.current = false;
+      isProcessingRef.current = false;
+      isRegionsSetupRef.current = false;
+      
+      console.log('✅ UltimateWaveSurfer cleanup complete');
+    };
+  }, [stopSync]);
 
   return (
     <div className={`ultimate-wavesurfer ${className}`}>
-      {/* 🎨 Custom scrollbar styling for both main waveform and minimap */}
       <style>{`
-        /* Main waveform scrollbar */
         .waveform-container ::-webkit-scrollbar {
           height: 10px;
           width: 10px;
@@ -5814,7 +5757,6 @@ const UltimateWaveSurfer = ({
           box-shadow: 0 0 15px rgba(8, 195, 242, 1);
         }
         
-        /* Minimap scrollbar - VERY BRIGHT blue glow */
         .minimap-container ::-webkit-scrollbar {
           height: 10px;
           width: 10px;
@@ -5826,7 +5768,6 @@ const UltimateWaveSurfer = ({
         .minimap-container ::-webkit-scrollbar-thumb {
           background: linear-gradient(45deg, #08c3f2, #4a9eff);
           border-radius: 4px;
-          /* MUCH stronger shadow - multiple layers for visibility */
           box-shadow: 
             0 0 10px rgba(8, 195, 242, 1),
             0 0 20px rgba(8, 195, 242, 0.8),
@@ -5836,7 +5777,6 @@ const UltimateWaveSurfer = ({
         }
         .minimap-container ::-webkit-scrollbar-thumb:hover {
           background: linear-gradient(45deg, #4a9eff, #08c3f2);
-          /* SUPER bright hover shadow */
           box-shadow: 
             0 0 15px rgba(8, 195, 242, 1),
             0 0 30px rgba(8, 195, 242, 1),
@@ -5845,7 +5785,6 @@ const UltimateWaveSurfer = ({
           border: 2px solid rgba(8, 195, 242, 1);
         }
         
-        /* Sync pulse animation */
         @keyframes syncPulse {
           0%, 100% {
             opacity: 1;
@@ -5856,7 +5795,6 @@ const UltimateWaveSurfer = ({
         }
       `}</style>
 
-      {/* 🎯 Main waveform container */}
       <div 
         ref={containerRef} 
         className="waveform-container"
@@ -5870,7 +5808,6 @@ const UltimateWaveSurfer = ({
         }}
       />
       
-      {/* 🗺️ Minimap container */}
       <div 
         ref={minimapRef} 
         className="minimap-container"
@@ -5878,128 +5815,11 @@ const UltimateWaveSurfer = ({
           width: '100%',
           marginTop: '10px',
           borderRadius: '4px',
-          overflow: 'auto', // Enable scrolling
+          overflow: 'auto',
           backgroundColor: '#2a2a2a',
           border: '1px solid #333'
         }}
       />
-
-      {/* 🎯 Ultimate Single Row Controls - All controls in one compact row */}
-      {isReady && (
-        <div className="region-controls" style={{
-          marginTop: '15px',
-          padding: '12px',
-          backgroundColor: '#333',
-          borderRadius: '6px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          flexWrap: 'wrap',
-          gap: '15px'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-            {/* Loop Regions Checkbox */}
-            <label style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              color: '#fff',
-              fontSize: '0.9rem',
-              cursor: 'pointer'
-            }}>
-              <input
-                type="checkbox"
-                checked={loopRegions}
-                onChange={(e) => {
-                  const newValue = e.target.checked;
-                  setLoopRegions(newValue);
-                  loopRegionsRef.current = newValue;
-                  setStatus(newValue ? '🔄 Region looping enabled' : '⏸️ Region looping disabled');
-                  console.log('🔄 Loop regions toggled to:', newValue);
-                }}
-                style={{
-                  accentColor: '#4a9eff',
-                  width: '16px',
-                  height: '16px'
-                }}
-              />
-              <span>🔄 Loop Regions</span>
-            </label>
-
-            {/* Region Info */}
-            <span style={{ 
-              color: '#4caf50', 
-              fontSize: '0.85rem',
-              fontWeight: '500'
-            }}>
-              📊 Regions: {regions?.getRegions()?.length || 0}
-            </span>
-          </div>
-
-          {/* Clear All Button */}
-          <button
-            onClick={() => {
-              try {
-                regions.clearRegions();
-                setActiveRegion(null);
-                setStatus('All regions cleared');
-              } catch (error) {
-                console.error('Error clearing regions:', error);
-              }
-            }}
-            style={{
-              backgroundColor: '#ff9800',
-              color: 'white',
-              border: 'none',
-              padding: '8px 16px',
-              borderRadius: '6px',
-              fontSize: '0.85rem',
-              fontWeight: '600',
-              cursor: 'pointer',
-              transition: 'all 0.2s ease',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px'
-            }}
-            onMouseEnter={(e) => {
-              e.target.style.backgroundColor = '#f57c00';
-              e.target.style.transform = 'translateY(-1px)';
-            }}
-            onMouseLeave={(e) => {
-              e.target.style.backgroundColor = '#ff9800';
-              e.target.style.transform = 'translateY(0)';
-            }}
-          >
-            <span>🗑️</span>
-            Clear All
-          </button>
-        </div>
-      )}
-      
-      {/* 📊 Minimal status - Only time and drag hint */}
-      {isReady && (
-        <div className="wavesurfer-status" style={{
-          marginTop: '10px',
-          padding: '8px 12px',
-          backgroundColor: '#2a2a2a',
-          borderRadius: '4px',
-          fontSize: '0.85rem',
-          color: '#ccc',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: '15px'
-        }}>
-          <span>
-            ⏱️ {formatTime(wsCurrentTime)} / {formatTime(wavesurfer?.getDuration() || 0)}
-          </span>
-          
-          <span style={{ color: '#888', fontSize: '0.75rem' }}>
-            🎨 Drag to create regions
-          </span>
-        </div>
-      )}
     </div>
   );
 };
