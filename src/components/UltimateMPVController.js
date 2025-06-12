@@ -1,6 +1,57 @@
-// src/components/UltimateMPVController.js - Updated with Single Row Layout & Combined Play/Pause
-import React, { useEffect, useCallback, useRef } from 'react';
+// src/components/UltimateMPVController.js - Updated with ONE ROW & Proper Mute Toggle
+import React, { useEffect, useCallback, useRef, useState } from 'react';
 import { useAudioSyncStore } from '../store/audioSyncStore';
+
+// 🔇 Mute Button Component - Tracks state like WS Audio toggle
+const MuteButton = ({ onClick }) => {
+  const [isMuted, setIsMuted] = useState(false);
+  
+  const handleClick = async () => {
+    try {
+      await onClick();
+      // Toggle local state
+      setIsMuted(!isMuted);
+    } catch (error) {
+      console.error('Mute toggle error:', error);
+    }
+  };
+  
+  return (
+    <button 
+      onClick={handleClick}
+      title="Toggle MPV Mute"
+      className={`mpv-mute-toggle ${isMuted ? 'muted' : ''}`}
+      style={{
+        background: isMuted 
+          ? 'linear-gradient(145deg, #f44336, #e57373)' // Red when muted
+          : 'linear-gradient(145deg, #4a9eff, #08c3f2)', // Blue when unmuted
+        color: 'white',
+        border: 'none',
+        padding: '10px',
+        borderRadius: '8px',
+        fontSize: '0.9rem',
+        cursor: 'pointer',
+        transition: 'all 0.3s ease',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        boxShadow: isMuted 
+          ? '0 4px 15px rgba(244, 67, 54, 0.4)'
+          : '0 4px 15px rgba(74, 158, 255, 0.4)',
+        minWidth: '40px',
+        animation: isMuted ? 'mpvMutedPulse 1.5s ease infinite' : 'none'
+      }}
+      onMouseEnter={(e) => {
+        e.target.style.transform = 'translateY(-2px)';
+      }}
+      onMouseLeave={(e) => {
+        e.target.style.transform = 'translateY(0)';
+      }}
+    >
+      <i className={`fas ${isMuted ? 'fa-volume-mute' : 'fa-volume-up'}`}></i>
+    </button>
+  );
+};
 
 const UltimateMPVController = ({ 
   onStatusChange,
@@ -363,17 +414,22 @@ const UltimateMPVController = ({
   }, []);
   
   return (
-    <div className="ultimate-mpv-controller">
-      {/* 🎮 Single Row Controls Layout */}
+    <div className="ultimate-mpv-controller" style={{
+      width: '100%',
+      minWidth: '100%'
+    }}>
+      {/* 🎮 SINGLE ROW - Launch Button + ALL Controls Together */}
       <div style={{
         display: 'flex',
         alignItems: 'center',
-        gap: '12px',
-        flexWrap: 'wrap',
-        justifyContent: 'space-between'
+        gap: '8px',
+        width: '100%',
+        minWidth: '100%',
+        flexWrap: 'nowrap', // Prevent wrapping - keep everything in one row
+        overflow: 'visible' // Make sure nothing gets cut off
       }}>
         
-        {/* 🚀 Launch Button */}
+        {/* 🚀 Launch/Connected Button */}
         <button 
           className={`mpv-launch ${mpvConnected ? 'connected' : ''}`}
           onClick={launchMPV}
@@ -385,35 +441,31 @@ const UltimateMPVController = ({
               : 'linear-gradient(145deg, #f44336, #e57373)',
             color: 'white',
             border: 'none',
-            padding: '12px 20px',
-            borderRadius: '10px',
-            fontSize: '1rem',
+            padding: '10px 12px',
+            borderRadius: '8px',
+            fontSize: '0.8rem',
             fontWeight: '600',
             cursor: !serverFilePathRef.current || mpvConnected ? 'not-allowed' : 'pointer',
             transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
             display: 'flex',
             alignItems: 'center',
-            gap: '8px',
+            gap: '4px',
             boxShadow: mpvConnected 
               ? '0 4px 15px rgba(76, 175, 80, 0.4)' 
               : '0 4px 15px rgba(244, 67, 54, 0.4)',
-            opacity: !serverFilePathRef.current ? 0.5 : 1
+            opacity: !serverFilePathRef.current ? 0.5 : 1,
+            minWidth: '110px',
+            justifyContent: 'center',
+            whiteSpace: 'nowrap'
           }}
         >
-          {mpvConnected ? '🎯 MPV CONNECTED' : '🚀 LAUNCH MPV'}
+          {mpvConnected ? '🎯 CONNECTED' : '🚀 LAUNCH'}
         </button>
 
-        {/* 🎮 Playback Controls - Only show when connected */}
+        {/* 🎮 ALL Control Buttons - Only show when connected */}
         {mpvConnected && (
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            flex: '1',
-            justifyContent: 'center'
-          }}>
-            
-            {/* Combined Play/Pause Button - Same style as WaveSurfer */}
+          <>
+            {/* Play/Pause Button */}
             <button 
               onClick={controls.playPause}
               title="Play/Pause (Space)"
@@ -423,30 +475,28 @@ const UltimateMPVController = ({
                   : 'linear-gradient(145deg, #4a9eff, #08c3f2)',
                 color: 'white',
                 border: 'none',
-                padding: '12px 16px',
-                borderRadius: '10px',
-                fontSize: '1.1rem',
-                fontWeight: '600',
+                padding: '10px',
+                borderRadius: '8px',
+                fontSize: '0.9rem',
                 cursor: 'pointer',
-                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                transition: 'all 0.3s ease',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '8px',
-                minWidth: '100px',
                 justifyContent: 'center',
                 boxShadow: isPlaying 
                   ? '0 4px 15px rgba(76, 175, 80, 0.4)' 
-                  : '0 4px 15px rgba(74, 158, 255, 0.4)'
+                  : '0 4px 15px rgba(74, 158, 255, 0.4)',
+                minWidth: '36px',
+                flexShrink: 0
               }}
               onMouseEnter={(e) => {
-                e.target.style.transform = 'translateY(-2px) scale(1.02)';
+                e.target.style.transform = 'translateY(-2px)';
               }}
               onMouseLeave={(e) => {
-                e.target.style.transform = 'translateY(0) scale(1)';
+                e.target.style.transform = 'translateY(0)';
               }}
             >
               <i className={`fas ${isPlaying ? 'fa-pause' : 'fa-play'}`}></i>
-              {isPlaying ? 'Pause' : 'Play'}
             </button>
 
             {/* Stop Button */}
@@ -457,25 +507,23 @@ const UltimateMPVController = ({
                 background: 'linear-gradient(145deg, #666, #555)',
                 color: 'white',
                 border: 'none',
-                padding: '12px',
-                borderRadius: '10px',
-                fontSize: '1.1rem',
+                padding: '10px',
+                borderRadius: '8px',
+                fontSize: '0.9rem',
                 cursor: 'pointer',
                 transition: 'all 0.3s ease',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                width: '48px',
-                height: '48px',
-                boxShadow: '0 4px 15px rgba(102, 102, 102, 0.3)'
+                boxShadow: '0 4px 15px rgba(102, 102, 102, 0.3)',
+                minWidth: '36px',
+                flexShrink: 0
               }}
               onMouseEnter={(e) => {
                 e.target.style.transform = 'translateY(-2px)';
-                e.target.style.background = 'linear-gradient(145deg, #777, #666)';
               }}
               onMouseLeave={(e) => {
                 e.target.style.transform = 'translateY(0)';
-                e.target.style.background = 'linear-gradient(145deg, #666, #555)';
               }}
             >
               <i className="fas fa-stop"></i>
@@ -489,17 +537,17 @@ const UltimateMPVController = ({
                 background: 'linear-gradient(145deg, #4a9eff, #08c3f2)',
                 color: 'white',
                 border: 'none',
-                padding: '12px',
-                borderRadius: '10px',
-                fontSize: '1.1rem',
+                padding: '10px',
+                borderRadius: '8px',
+                fontSize: '0.9rem',
                 cursor: 'pointer',
                 transition: 'all 0.3s ease',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                width: '48px',
-                height: '48px',
-                boxShadow: '0 4px 15px rgba(74, 158, 255, 0.3)'
+                boxShadow: '0 4px 15px rgba(74, 158, 255, 0.3)',
+                minWidth: '36px',
+                flexShrink: 0
               }}
               onMouseEnter={(e) => {
                 e.target.style.transform = 'translateY(-2px)';
@@ -519,17 +567,17 @@ const UltimateMPVController = ({
                 background: 'linear-gradient(145deg, #4a9eff, #08c3f2)',
                 color: 'white',
                 border: 'none',
-                padding: '12px',
-                borderRadius: '10px',
-                fontSize: '1.1rem',
+                padding: '10px',
+                borderRadius: '8px',
+                fontSize: '0.9rem',
                 cursor: 'pointer',
                 transition: 'all 0.3s ease',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                width: '48px',
-                height: '48px',
-                boxShadow: '0 4px 15px rgba(74, 158, 255, 0.3)'
+                boxShadow: '0 4px 15px rgba(74, 158, 255, 0.3)',
+                minWidth: '36px',
+                flexShrink: 0
               }}
               onMouseEnter={(e) => {
                 e.target.style.transform = 'translateY(-2px)';
@@ -549,17 +597,17 @@ const UltimateMPVController = ({
                 background: 'linear-gradient(145deg, #ff9800, #ffb74d)',
                 color: 'white',
                 border: 'none',
-                padding: '12px',
-                borderRadius: '10px',
-                fontSize: '1rem',
+                padding: '10px',
+                borderRadius: '8px',
+                fontSize: '0.9rem',
                 cursor: 'pointer',
                 transition: 'all 0.3s ease',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                width: '48px',
-                height: '48px',
-                boxShadow: '0 4px 15px rgba(255, 152, 0, 0.3)'
+                boxShadow: '0 4px 15px rgba(255, 152, 0, 0.3)',
+                minWidth: '36px',
+                flexShrink: 0
               }}
               onMouseEnter={(e) => {
                 e.target.style.transform = 'translateY(-2px)';
@@ -579,17 +627,17 @@ const UltimateMPVController = ({
                 background: 'linear-gradient(145deg, #ff9800, #ffb74d)',
                 color: 'white',
                 border: 'none',
-                padding: '12px',
-                borderRadius: '10px',
-                fontSize: '1rem',
+                padding: '10px',
+                borderRadius: '8px',
+                fontSize: '0.9rem',
                 cursor: 'pointer',
                 transition: 'all 0.3s ease',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                width: '48px',
-                height: '48px',
-                boxShadow: '0 4px 15px rgba(255, 152, 0, 0.3)'
+                boxShadow: '0 4px 15px rgba(255, 152, 0, 0.3)',
+                minWidth: '36px',
+                flexShrink: 0
               }}
               onMouseEnter={(e) => {
                 e.target.style.transform = 'translateY(-2px)';
@@ -601,37 +649,12 @@ const UltimateMPVController = ({
               <i className="fas fa-volume-up"></i>
             </button>
 
-            {/* Mute Toggle */}
-            <button 
-              onClick={controls.toggleMute}
-              title="Toggle Mute"
-              style={{
-                background: 'linear-gradient(145deg, #f44336, #e57373)',
-                color: 'white',
-                border: 'none',
-                padding: '12px',
-                borderRadius: '10px',
-                fontSize: '1rem',
-                cursor: 'pointer',
-                transition: 'all 0.3s ease',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: '48px',
-                height: '48px',
-                boxShadow: '0 4px 15px rgba(244, 67, 54, 0.3)'
-              }}
-              onMouseEnter={(e) => {
-                e.target.style.transform = 'translateY(-2px)';
-              }}
-              onMouseLeave={(e) => {
-                e.target.style.transform = 'translateY(0)';
-              }}
-            >
-              <i className="fas fa-volume-mute"></i>
-            </button>
+            {/* Mute Toggle - State tracking like WS Audio */}
+            <div style={{ flexShrink: 0 }}>
+              <MuteButton onClick={controls.toggleMute} />
+            </div>
 
-            {/* Fullscreen */}
+            {/* Fullscreen - MUST BE INCLUDED IN THE BOX */}
             <button 
               onClick={controls.toggleFullscreen}
               title="Toggle Fullscreen"
@@ -639,17 +662,17 @@ const UltimateMPVController = ({
                 background: 'linear-gradient(145deg, #9c27b0, #ba68c8)',
                 color: 'white',
                 border: 'none',
-                padding: '12px',
-                borderRadius: '10px',
-                fontSize: '1rem',
+                padding: '10px',
+                borderRadius: '8px',
+                fontSize: '0.9rem',
                 cursor: 'pointer',
                 transition: 'all 0.3s ease',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                width: '48px',
-                height: '48px',
-                boxShadow: '0 4px 15px rgba(156, 39, 176, 0.3)'
+                boxShadow: '0 4px 15px rgba(156, 39, 176, 0.3)',
+                minWidth: '36px',
+                flexShrink: 0
               }}
               onMouseEnter={(e) => {
                 e.target.style.transform = 'translateY(-2px)';
@@ -660,32 +683,21 @@ const UltimateMPVController = ({
             >
               <i className="fas fa-expand"></i>
             </button>
-          </div>
-        )}
-
-        {/* 📊 Status Display */}
-        {mpvConnected && (
-          <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'flex-end',
-            fontSize: '0.85rem',
-            color: '#b0b0b0',
-            minWidth: '120px'
-          }}>
-            <div style={{
-              color: '#4caf50',
-              fontWeight: '600',
-              marginBottom: '2px'
-            }}>
-              🎯 SYNCED
-            </div>
-            <div style={{ color: '#4a9eff' }}>
-              {isPlaying ? '▶️ Playing' : '⏸️ Paused'}
-            </div>
-          </div>
+          </>
         )}
       </div>
+
+      {/* 🎨 CSS for Mute Toggle Animation */}
+      <style>{`
+        @keyframes mpvMutedPulse {
+          0%, 100% {
+            opacity: 1;
+          }
+          50% {
+            opacity: 0.7;
+          }
+        }
+      `}</style>
     </div>
   );
 };

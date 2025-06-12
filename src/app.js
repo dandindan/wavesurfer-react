@@ -1,4 +1,4 @@
-// src/App.js
+// src/App.js - Updated with Enhanced Region Controls Only
 import React, { useCallback, useEffect } from 'react';
 import { useAudioSyncStore } from './store/audioSyncStore';
 import UltimateWaveSurfer from './components/UltimateWaveSurfer';
@@ -43,6 +43,15 @@ function UltimateApp() {
     validateAudioFile,
     getPerformanceStats
   } = useAudioSyncStore();
+
+  // 🎯 Helper function for formatting time
+  const formatTime = (seconds) => {
+    if (!seconds && seconds !== 0) return '--:--';
+    const minutes = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    const ms = Math.floor((seconds % 1) * 100);
+    return `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}.${ms.toString().padStart(2, '0')}`;
+  };
 
   // 📁 Ultimate file upload handler
   const handleFileUpload = useCallback((file) => {
@@ -336,9 +345,89 @@ function UltimateApp() {
           </div>
         </div>
 
-        {/* 📊 Region controls */}
+        {/* 📊 ENHANCED Region controls - ALL FUNCTIONALITY IN ONE PLACE */}
         <div className="control-section region-controls">
           <h3>📊 Regions</h3>
+          
+          {/* Row 1: Loop toggle and region count */}
+          <div className="region-info-row" style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: '12px',
+            padding: '8px 12px',
+            backgroundColor: 'rgba(255, 255, 255, 0.05)',
+            borderRadius: '6px',
+            fontSize: '0.85rem'
+          }}>
+            {/* Loop Regions Toggle */}
+            <label style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              cursor: 'pointer',
+              color: '#fff',
+              fontSize: '0.85rem'
+            }}>
+              <input
+                type="checkbox"
+                checked={window.ultimateWaveSurfer?.ultimate?.getLoopRegions() || false}
+                onChange={(e) => {
+                  const newValue = e.target.checked;
+                  if (window.ultimateWaveSurfer?.ultimate?.setLoopRegions) {
+                    window.ultimateWaveSurfer.ultimate.setLoopRegions(newValue);
+                  }
+                }}
+                style={{
+                  accentColor: '#4a9eff',
+                  width: '14px',
+                  height: '14px'
+                }}
+              />
+              <span>🔄 Loop</span>
+            </label>
+
+            {/* Region Count */}
+            <span style={{ 
+              color: '#4caf50', 
+              fontWeight: '500',
+              fontSize: '0.85rem'
+            }}>
+              📊 Count: {window.ultimateWaveSurfer?.ultimate?.getRegions()?.length || 0}
+            </span>
+          </div>
+
+          {/* Row 2: Current time and drag hint */}
+          <div className="region-status-row" style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: '12px',
+            padding: '6px 12px',
+            backgroundColor: 'rgba(74, 158, 255, 0.1)',
+            borderRadius: '6px',
+            fontSize: '0.8rem'
+          }}>
+            {/* Current Time Display */}
+            <span style={{ 
+              color: '#4a9eff', 
+              fontWeight: '600',
+              fontSize: '0.85rem'
+            }}>
+              ⏱️ {formatTime(currentTime)} / {formatTime(duration)}
+            </span>
+
+            {/* Drag Hint */}
+            <span style={{ 
+              color: '#888', 
+              fontSize: '0.75rem',
+              fontStyle: 'italic'
+            }}>
+              🎨 Drag to create
+            </span>
+          </div>
+
+          {/* Row 3: Action buttons */}
           <div className="controls-grid">
             <button 
               onClick={() => window.ultimateWaveSurfer?.ultimate?.clearAllRegions()}
@@ -362,15 +451,16 @@ function UltimateApp() {
             )}
           </div>
           
+          {/* Active Region Details */}
           {activeRegion && (
             <div className="active-region-info">
               <div className="region-details">
-                <span className="region-time">
+                <div className="region-time">
                   📊 {activeRegion.start.toFixed(3)}s - {activeRegion.end.toFixed(3)}s
-                </span>
-                <span className="region-duration">
+                </div>
+                <div className="region-duration">
                   Duration: {(activeRegion.end - activeRegion.start).toFixed(3)}s
-                </span>
+                </div>
               </div>
             </div>
           )}
@@ -509,14 +599,5 @@ function UltimateApp() {
     </div>
   );
 }
-
-// 🎯 Helper function
-const formatTime = (seconds) => {
-  if (!seconds && seconds !== 0) return '--:--';
-  const minutes = Math.floor(seconds / 60);
-  const secs = Math.floor(seconds % 60);
-  const ms = Math.floor((seconds % 1) * 100);
-  return `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}.${ms.toString().padStart(2, '0')}`;
-};
 
 export default UltimateApp;

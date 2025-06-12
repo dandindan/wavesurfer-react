@@ -1,11 +1,12 @@
 /**
  * File: src/assets/styles/main.css
- * Description: Main application styling
+ * Description: Main application styling - CORRECTED VERSION
  * 
  * Version History:
  * v1.0.0 (2025-05-18) - Initial implementation based on original HTML
  * v1.0.1 (2025-05-19) - Fixed corrupted CSS rule for waveform container
  * v1.0.2 (2025-05-19) - Updated container widths to 95% and fixed background colors
+ * v1.0.3 (2025-06-12) - Fixed duplicates and MPV layout issues
  */
 
 body {
@@ -17,7 +18,7 @@ body {
 }
 
 .container {
-  max-width: 1200px; /* Slightly wider container */
+  max-width: 1200px;
   margin: 0 auto;
 }
 
@@ -40,23 +41,21 @@ h1 {
 
 /* Single container for waveform, spectrogram and timeline */
 #waveform-container {
-  width: 95% !important; /* Force 95% width */
-  margin: 0 auto 20px auto !important; /* Center the container */
+  width: 95% !important;
+  margin: 0 auto 20px auto !important;
   background-color: #1a1a1a;
   border-radius: 5px;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
   position: relative;
-  /* Default height will include both waveform, spectrogram and timeline */
   height: 560px;
-  /* Makes sure content is visible */
   overflow: visible !important;
 }
 
 /* Only keep minimap separate */
 #minimap {
-  width: 95% !important; /* Force 95% width */
+  width: 95% !important;
   height: 40px;
-  margin: 0 auto 20px auto !important; /* Center the minimap */
+  margin: 0 auto 20px auto !important;
   background-color: #1a1a1a;
   border-radius: 5px;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
@@ -68,7 +67,7 @@ h1 {
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  width: 95%; /* Match waveform width */
+  width: 95%;
   max-width: 1200px;
   margin: 20px auto;
   padding: 15px;
@@ -98,32 +97,6 @@ h1 {
   color: #0dcaf0;
 }
 
-input[type='range'] {
-  flex-grow: 1;
-  margin: 0 5px;
-  height: 8px;
-  border-radius: 4px;
-  background: #555555;
-  outline: none;
-}
-
-input[type='range']::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: #4363ca;
-  cursor: pointer;
-}
-
-input[type='range']::-moz-range-thumb {
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: #4363ca;
-  cursor: pointer;
-}
-
 .checkbox-container {
   display: flex;
   align-items: center;
@@ -137,35 +110,8 @@ input[type='range']::-moz-range-thumb {
   justify-content: center;
   margin: 20px 0;
   flex-wrap: wrap;
-  width: 95%; /* Match waveform width */
+  width: 95%;
   margin: 20px auto;
-}
-
-button {
-  background-color: #4363ca;
-  color: #ffffff;
-  padding: 10px 20px;
-  border: none;
-  border-radius: 5px;
-  margin: 5px 10px;
-  cursor: pointer;
-}
-
-button:hover {
-  background-color: #357ea8;
-}
-
-button.danger {
-  background-color: #dc3545;
-}
-
-button.danger:hover {
-  background-color: #c82333;
-}
-
-button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
 }
 
 /* Loading container */
@@ -215,7 +161,7 @@ button:disabled {
   margin: 10px 0;
   background-color: #222;
   border-radius: 5px;
-  width: 95%; /* Match waveform width */
+  width: 95%;
   margin: 10px auto;
 }
 
@@ -246,7 +192,7 @@ button:disabled {
   border-radius: 8px;
   text-align: center;
   animation: fadeIn 0.3s ease-in;
-  width: 95%; /* Match waveform width */
+  width: 95%;
   margin: 15px auto;
 }
 
@@ -298,39 +244,15 @@ button:disabled {
 .current-time {
   text-align: center;
   margin-bottom: 10px;
-  width: 95%; /* Match waveform width */
+  width: 95%;
   margin: 0 auto 10px auto;
   color: #0dcaf0;
   font-weight: bold;
 }
 
-/* Responsive adjustments */
-@media (max-width: 768px) {
-  #waveform-container {
-    height: 400px;
-  }
-
-  .slider-container {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .slider-label {
-    margin-bottom: 5px;
-  }
-
-  .controls-row {
-    flex-direction: column;
-  }
-
-  .checkbox-container {
-    margin: 10px 0;
-  }
-}
 /* ========================================= */
-/* 🎯 ULTIMATE ENHANCEMENTS - ADD BELOW    */
+/* 🎯 ULTIMATE ENHANCEMENTS - CORRECTED    */
 /* ========================================= */
-/* Add these styles to src/assets/styles/main.css */
 
 /* 🎯 Ultimate App Enhancements */
 .ultimate-app {
@@ -410,16 +332,6 @@ button:disabled {
   }
 }
 
-@keyframes gradientShift {
-  0%,
-  100% {
-    background-position: 0% 50%;
-  }
-  50% {
-    background-position: 100% 50%;
-  }
-}
-
 .app-stats {
   display: flex;
   justify-content: center;
@@ -457,10 +369,10 @@ button:disabled {
   }
 }
 
-/* 🎮 Ultimate Controls Grid */
+/* 🎮 Ultimate Controls Grid - FIXED PROPORTIONS */
 .ultimate-controls {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  grid-template-columns: 0.8fr 1.2fr 1.2fr 1.8fr !important; /* Playback smaller, sliders bigger, regions bigger, MPV biggest */
   gap: 25px;
   margin: 30px 0;
   padding: 30px;
@@ -468,6 +380,7 @@ button:disabled {
   border-radius: 15px;
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.7);
   border: 1px solid rgba(74, 158, 255, 0.1);
+  overflow: visible !important;
 }
 
 .control-section {
@@ -476,6 +389,7 @@ button:disabled {
   padding: 20px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   transition: all 0.3s ease;
+  overflow: visible !important;
 }
 
 .control-section:hover {
@@ -500,7 +414,27 @@ button:disabled {
   gap: 12px;
 }
 
-/* 🎵 Ultimate Buttons */
+/* 🎬 MPV Section - SPANS FULL WIDTH OF UPPER ROW */
+.control-section.mpv-section {
+  grid-column: 1 / -1 !important; /* Span all 4 columns */
+  min-width: 100% !important;
+  width: 100% !important;
+  overflow: visible !important;
+  margin-top: 15px; /* Small gap from upper row */
+}
+
+/* 🎮 Ultimate MPV Controller - FIXED LAYOUT */
+.ultimate-mpv-controller {
+  display: flex !important;
+  gap: 6px !important;
+  align-items: center !important;
+  flex-wrap: nowrap !important;
+  width: 100% !important;
+  overflow: visible !important;
+  justify-content: flex-start !important;
+}
+
+/* 🎵 Ultimate Buttons - UNIFIED STYLING */
 button {
   background: linear-gradient(145deg, #4a9eff, #08c3f2);
   color: white;
@@ -583,25 +517,19 @@ button:disabled {
   box-shadow: 0 4px 15px rgba(255, 152, 0, 0.4);
 }
 
-/* 🎬 MPV Controller Styles */
-.ultimate-mpv-controller {
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
-}
-
+/* 🎬 MPV Launch Button */
 .mpv-launch {
-  font-size: 1.2rem;
-  padding: 15px 25px;
+  font-size: 0.8rem !important;
+  padding: 10px 12px !important;
   background: linear-gradient(145deg, #f44336, #e57373);
   box-shadow: 0 6px 20px rgba(244, 67, 54, 0.4);
-  border-radius: 12px;
-  text-transform: uppercase;
-  letter-spacing: 1px;
+  border-radius: 8px !important;
+  min-width: 110px !important;
+  white-space: nowrap;
 }
 
 .mpv-launch.connected {
-  background: linear-gradient(145deg, #4caf50, #66bb6a);
+  background: linear-gradient(145deg, #4caf50, #66bb6a) !important;
   box-shadow: 0 6px 20px rgba(76, 175, 80, 0.5);
   animation: connectedGlow 2s ease infinite;
 }
@@ -616,87 +544,7 @@ button:disabled {
   }
 }
 
-.mpv-controls {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(50px, 1fr));
-  gap: 10px;
-}
-
-.control-btn {
-  aspect-ratio: 1;
-  padding: 12px;
-  font-size: 1.3rem;
-  min-width: 50px;
-  border-radius: 10px;
-}
-
-.mpv-status {
-  background: linear-gradient(145deg, #2a2a2a, #1e1e1e);
-  border-radius: 10px;
-  padding: 15px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.status-indicator {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 8px;
-}
-
-.status-indicator.connected .status-text {
-  color: #4caf50;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.status-indicator.disconnected .status-text {
-  color: #f44336;
-  font-weight: 600;
-}
-
-.sync-info {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  font-size: 0.9rem;
-}
-
-.sync-accuracy {
-  color: #4a9eff;
-  font-weight: 500;
-}
-
-.command-queue {
-  color: #b0b0b0;
-  font-size: 0.8rem;
-}
-
-/* 📱 Range Controls */
-.range-control {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.range-info {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 0.9rem;
-}
-
-.range-info span {
-  color: #4a9eff;
-  font-weight: 600;
-}
-
-.range-info small {
-  color: #888;
-  font-size: 0.75rem;
-}
-
+/* 📱 Range Controls - UNIFIED STYLING */
 input[type='range'] {
   -webkit-appearance: none;
   appearance: none;
@@ -734,6 +582,29 @@ input[type='range']::-moz-range-thumb {
   cursor: pointer;
   border: none;
   box-shadow: 0 4px 12px rgba(74, 158, 255, 0.4);
+}
+
+.range-control {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.range-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.9rem;
+}
+
+.range-info span {
+  color: #4a9eff;
+  font-weight: 600;
+}
+
+.range-info small {
+  color: #888;
+  font-size: 0.75rem;
 }
 
 /* 📊 Region Info */
@@ -1046,7 +917,7 @@ kbd {
   }
 
   .ultimate-controls {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr !important;
     gap: 20px;
     padding: 20px;
   }
@@ -1074,6 +945,15 @@ kbd {
   .error-content {
     max-width: none;
   }
+
+  .control-section.mpv-section {
+    min-width: 100% !important;
+  }
+
+  .ultimate-mpv-controller {
+    flex-wrap: wrap !important;
+    gap: 4px !important;
+  }
 }
 
 @media (max-width: 480px) {
@@ -1094,13 +974,14 @@ kbd {
     padding: 15px;
   }
 
-  .mpv-controls {
-    grid-template-columns: repeat(4, 1fr);
+  .ultimate-mpv-controller {
+    flex-wrap: wrap !important;
+    justify-content: center !important;
   }
 
-  .control-btn {
-    font-size: 1.1rem;
-    padding: 10px;
+  .mpv-launch {
+    min-width: 100px !important;
+    font-size: 0.75rem !important;
   }
 }
 

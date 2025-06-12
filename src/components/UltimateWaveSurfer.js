@@ -1,4 +1,4 @@
-// src/components/UltimateWaveSurfer.js - v21 Enhanced MPV Controls Layout & Styling
+// src/components/UltimateWaveSurfer.js - v22 COMPLETE - Cleaned Up
 import React, { useRef, useMemo, useCallback, useEffect, useState } from 'react';
 import { useWavesurfer } from '@wavesurfer/react';
 import RegionsPlugin from 'wavesurfer.js/dist/plugins/regions.js';
@@ -25,7 +25,7 @@ const UltimateWaveSurfer = ({
   
   // 🎯 Ultimate Sync System State
   const [syncActive, setSyncActive] = useState(false);
-  const [syncMode, setSyncMode] = useState('idle'); // 'idle', 'wavesurfer-master', 'mpv-master'
+  const [syncMode, setSyncMode] = useState('idle');
   const [syncAccuracy, setSyncAccuracy] = useState(0);
   const [lastSyncTime, setLastSyncTime] = useState(0);
   
@@ -67,7 +67,7 @@ const UltimateWaveSurfer = ({
     updateSyncAccuracy
   } = useAudioSyncStore();
 
-  // 🚀 Create regions plugin SEPARATELY (following official example)
+  // 🚀 Create regions plugin SEPARATELY
   const regions = useMemo(() => RegionsPlugin.create(), []);
 
   // 🎨 Random color generator for regions
@@ -107,9 +107,8 @@ const UltimateWaveSurfer = ({
       height: 50,
       waveColor: '#777',
       progressColor: '#08c3f2',
-      // Make minimap regions much brighter and more visible
-      regionColor: 'rgba(74, 158, 255, 0.8)', // Bright blue with high opacity
-      regionBorderColor: '#4a9eff' // Bright border
+      regionColor: 'rgba(74, 158, 255, 0.8)',
+      regionBorderColor: '#4a9eff'
     })
   ], [regions]);
 
@@ -117,19 +116,18 @@ const UltimateWaveSurfer = ({
   const { wavesurfer, isReady, currentTime: wsCurrentTime } = useWavesurfer({
     container: containerRef,
     height,
-    waveColor: '#777', // Match minimap grey
-    progressColor: '#08c3f2', // Match minimap blue
+    waveColor: '#777',
+    progressColor: '#08c3f2',
     cursorColor: '#ff5722',
     cursorWidth: 2,
     normalize: true,
     responsive: true,
-    hideScrollbar: false, // Enable scrollbar for zoom navigation
+    hideScrollbar: false,
     url: audioUrl,
     plugins
   });
 
-  // 🎯 Setup regions after decode (following official example with loop logic)
-  // Use ref to prevent multiple setups
+  // 🎯 Setup regions after decode - Use ref to prevent multiple setups
   const isRegionsSetupRef = useRef(false);
   
   useEffect(() => {
@@ -140,27 +138,24 @@ const UltimateWaveSurfer = ({
       isRegionsSetupRef.current = true;
       
       try {
-        // Enable drag selection (official pattern)
+        // Enable drag selection
         regions.enableDragSelection({
           color: 'rgba(74, 158, 255, 0.1)',
         });
 
-        // Set up event handlers (official pattern with loop logic)
+        // Set up event handlers
         let activeRegionRef = null;
 
-        // Region in - track active region
         const handleRegionIn = (region) => {
           console.log('🎵 Region in:', region);
           activeRegionRef = region;
           setActiveRegion(region);
         };
 
-        // Region out - handle looping
         const handleRegionOut = (region) => {
           console.log('🎵 Region out:', region, 'Loop enabled:', loopRegionsRef.current);
           if (activeRegionRef === region) {
             if (loopRegionsRef.current) {
-              // Loop the region
               region.play();
               console.log('🔄 Looping region:', region);
             } else {
@@ -171,21 +166,15 @@ const UltimateWaveSurfer = ({
           }
         };
 
-        // Region clicked - play and change color
         const handleRegionClick = (region, e) => {
           e.stopPropagation();
           console.log('🎵 Region clicked:', region);
           
           activeRegionRef = region;
           setActiveRegion(region);
-          
-          // Play the region (official pattern)
           region.play(true);
-          
-          // Change color on click (official pattern)
           region.setOptions({ color: randomColor() });
           
-          // Update global state
           const duration = wavesurfer.getDuration();
           if (duration > 0) {
             wavesurfer.seekTo(region.start / duration);
@@ -195,20 +184,17 @@ const UltimateWaveSurfer = ({
           if (onRegionClick) onRegionClick(region);
         };
 
-        // Region created - FIX: Use functional update to prevent count issues
         const handleRegionCreated = (region) => {
           console.log('🎵 Region created ONCE:', region);
           addRegion(region);
           setStatus(`Region created: ${region.start.toFixed(2)}s - ${region.end.toFixed(2)}s`);
         };
 
-        // Region updated
         const handleRegionUpdated = (region) => {
           console.log('🎵 Region updated:', region);
           setActiveRegion(region);
         };
 
-        // Reset active region on waveform click (official pattern)
         const handleInteraction = () => {
           activeRegionRef = null;
           setActiveRegion(null);
@@ -224,7 +210,6 @@ const UltimateWaveSurfer = ({
 
         console.log('✅ Regions setup complete with loop functionality');
         
-        // Store cleanup functions for proper removal
         return () => {
           console.log('🧹 Cleaning up region event listeners');
           regions.off('region-in', handleRegionIn);
@@ -243,7 +228,6 @@ const UltimateWaveSurfer = ({
 
     let cleanup;
     
-    // Wait for decode or setup immediately if ready
     if (wavesurfer.getDuration() > 0) {
       cleanup = setupRegions();
     } else {
@@ -252,20 +236,17 @@ const UltimateWaveSurfer = ({
       });
     }
 
-    // Cleanup function
     return () => {
       if (cleanup) cleanup();
     };
-  }, [wavesurfer, isReady]); // Removed deps that cause re-runs
+  }, [wavesurfer, isReady, regions, setActiveRegion, addRegion, setStatus, randomColor, setCurrentTime, onRegionClick]);
 
   // 🔄 Update ref when state changes
   useEffect(() => {
     loopRegionsRef.current = loopRegions;
   }, [loopRegions]);
 
-  // 🚀 Ultimate Sync System Integration
-  
-  // Professional command queue system
+  // 🚀 Professional command queue system
   const queueMPVCommand = useCallback(async (command, priority = 'normal') => {
     if (!mpvConnected) return false;
     
@@ -339,7 +320,6 @@ const UltimateWaveSurfer = ({
     const mpvTime = mpvCurrentTime || 0;
     const timeDrift = Math.abs(wsTime - mpvTime);
     
-    // Add to drift history
     driftHistoryRef.current.push({
       time: Date.now(),
       drift: timeDrift,
@@ -351,7 +331,6 @@ const UltimateWaveSurfer = ({
       driftHistoryRef.current.shift();
     }
     
-    // Update performance stats
     const avgDrift = driftHistoryRef.current.reduce((sum, d) => sum + d.drift, 0) / driftHistoryRef.current.length;
     performanceStatsRef.current.avgAccuracy = avgDrift;
     
@@ -368,7 +347,6 @@ const UltimateWaveSurfer = ({
       const wsPlaying = wavesurfer.isPlaying();
       const timeDrift = Math.abs(wsTime - mpvTime);
       
-      // Time sync with threshold
       if (timeDrift > 0.05) {
         const duration = wavesurfer.getDuration() || 1;
         wavesurfer.seekTo(mpvTime / duration);
@@ -376,7 +354,6 @@ const UltimateWaveSurfer = ({
         console.log(`🔄 WS←MPV time sync: ${wsTime.toFixed(3)}s → ${mpvTime.toFixed(3)}s`);
       }
       
-      // Play state sync
       if (wsPlaying !== mpvPlaying) {
         if (mpvPlaying) {
           wavesurfer.play();
@@ -402,14 +379,12 @@ const UltimateWaveSurfer = ({
       const wsPlaying = wavesurfer.isPlaying();
       const timeDrift = Math.abs(wsTime - (mpvCurrentTime || 0));
       
-      // Time sync with threshold
       if (timeDrift > 0.05) {
         await queueMPVCommand(['seek', wsTime, 'absolute', 'exact'], 'high');
         performanceStatsRef.current.driftCorrections++;
         console.log(`🔄 MPV←WS time sync: ${(mpvCurrentTime || 0).toFixed(3)}s → ${wsTime.toFixed(3)}s`);
       }
       
-      // Play state sync
       if (wsPlaying !== mpvPlaying) {
         await queueMPVCommand(['set_property', 'pause', !wsPlaying], 'high');
         console.log(`🔄 MPV←WS play state: ${mpvPlaying} → ${wsPlaying}`);
@@ -430,20 +405,17 @@ const UltimateWaveSurfer = ({
       return;
     }
     
-    // Region playback - WaveSurfer is master
     if (activeRegion) {
       syncModeRef.current = 'wavesurfer-master';
       setSyncMode('wavesurfer-master');
       return;
     }
     
-    // Check who initiated the last change
     const wsTime = wavesurfer?.getCurrentTime() || 0;
     const mpvTime = mpvCurrentTime || 0;
     const wsChange = Math.abs(wsTime - lastWsTimeRef.current);
     const mpvChange = Math.abs(mpvTime - lastMpvTimeRef.current);
     
-    // If significant change detected, determine master
     if (wsChange > 0.1) {
       syncModeRef.current = 'wavesurfer-master';
       setSyncMode('wavesurfer-master');
@@ -452,7 +424,6 @@ const UltimateWaveSurfer = ({
       setSyncMode('mpv-master');
     }
     
-    // Update last known times
     lastWsTimeRef.current = wsTime;
     lastMpvTimeRef.current = mpvTime;
     
@@ -463,25 +434,19 @@ const UltimateWaveSurfer = ({
     if (!syncActiveRef.current || !mpvConnected || !wavesurfer) return;
     
     try {
-      // Calculate current sync accuracy
       const accuracy = calculateSyncAccuracy();
       setSyncAccuracy(accuracy);
       setLastSyncTime(Date.now());
       
-      // Update global sync accuracy
       updateSyncAccuracy(accuracy);
-      
-      // Determine sync mode
       determineSyncMode();
       
-      // Execute appropriate sync direction
       if (syncModeRef.current === 'wavesurfer-master') {
         await syncMPVToWaveSurfer();
       } else if (syncModeRef.current === 'mpv-master') {
         await syncWaveSurferToMPV();
       }
       
-      // Update status
       if (accuracy < 0.05) {
         setStatus(`🎯 Perfect Sync: ${(accuracy * 1000).toFixed(0)}ms (${syncModeRef.current})`);
       } else {
@@ -502,7 +467,6 @@ const UltimateWaveSurfer = ({
     syncActiveRef.current = true;
     setSyncActive(true);
     
-    // Reset performance stats
     performanceStatsRef.current = {
       syncEvents: 0,
       driftCorrections: 0,
@@ -510,9 +474,7 @@ const UltimateWaveSurfer = ({
       lastReset: Date.now()
     };
     
-    // Start sync loop - 800ms interval
     syncIntervalRef.current = setInterval(runSyncLoop, 800);
-    
     setStatus('🎯 Ultimate Sync System Active');
     
   }, [mpvConnected, wavesurfer, runSyncLoop, setStatus]);
@@ -533,7 +495,6 @@ const UltimateWaveSurfer = ({
       syncIntervalRef.current = null;
     }
     
-    // Clear command queue
     commandQueueRef.current.forEach(cmd => {
       cmd.reject(new Error('Sync stopped'));
     });
@@ -581,7 +542,6 @@ const UltimateWaveSurfer = ({
       setLoading(false);
       setStatus('🎯 Ultimate WaveSurfer ready!');
       
-      // Apply settings
       try {
         if (playbackRate !== 1.0) {
           wavesurfer.setPlaybackRate(playbackRate);
@@ -604,7 +564,6 @@ const UltimateWaveSurfer = ({
   useEffect(() => {
     if (wavesurfer && isReady) {
       wavesurfer.ultimate = {
-        // Core controls
         seekTo: (time) => {
           try {
             const duration = wavesurfer.getDuration();
@@ -668,7 +627,6 @@ const UltimateWaveSurfer = ({
           }
         },
         
-        // Region controls
         createRegion: (start, end, options = {}) => {
           try {
             return regions.addRegion({
@@ -703,7 +661,6 @@ const UltimateWaveSurfer = ({
           }
         },
         
-        // Loop control
         setLoopRegions: (loop) => {
           setLoopRegions(loop);
           loopRegionsRef.current = loop;
@@ -712,7 +669,6 @@ const UltimateWaveSurfer = ({
         
         getLoopRegions: () => loopRegionsRef.current,
         
-        // Ultimate Sync API
         sync: {
           start: startSync,
           stop: stopSync,
@@ -728,7 +684,6 @@ const UltimateWaveSurfer = ({
           })
         },
         
-        // Utility
         setVolume: (volume) => {
           try {
             wavesurfer.setVolume(Math.max(0, Math.min(1, volume)));
@@ -745,7 +700,6 @@ const UltimateWaveSurfer = ({
           }
         },
         
-        // Debug
         getDebugInfo: () => ({
           isReady,
           duration: wavesurfer?.getDuration() || 0,
@@ -756,7 +710,6 @@ const UltimateWaveSurfer = ({
         })
       };
       
-      // Global access for debugging
       if (process.env.NODE_ENV === 'development') {
         window.ultimateWaveSurfer = wavesurfer;
         window.ultimateSync = {
@@ -770,7 +723,7 @@ const UltimateWaveSurfer = ({
         console.log('🎯 Ultimate WaveSurfer API ready');
       }
     }
-  }, [wavesurfer, isReady, regions, setCurrentTime, setIsPlaying, setActiveRegion, setStatus, randomColor]);
+  }, [wavesurfer, isReady, regions, setCurrentTime, setIsPlaying, setActiveRegion, setStatus, randomColor, startSync, stopSync, triggerManualSync, syncActive, syncMode, syncAccuracy, setLoopRegions]);
 
   // 🔄 Sync time updates
   useEffect(() => {
@@ -828,20 +781,36 @@ const UltimateWaveSurfer = ({
     }
   }, [isMuted, wavesurfer, isReady]);
 
-  // 🎯 Format time helper
-  const formatTime = (seconds) => {
-    if (!seconds && seconds !== 0) return '--:--';
-    const minutes = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    const ms = Math.floor((seconds % 1) * 100);
-    return `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}.${ms.toString().padStart(2, '0')}`;
-  };
+  // 🧹 Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      console.log('🧹 UltimateWaveSurfer cleanup...');
+      
+      if (syncActiveRef.current) {
+        stopSync();
+      }
+      
+      if (syncIntervalRef.current) {
+        clearInterval(syncIntervalRef.current);
+        syncIntervalRef.current = null;
+      }
+      
+      commandQueueRef.current.forEach(cmd => {
+        cmd.reject(new Error('Component unmounted'));
+      });
+      commandQueueRef.current = [];
+      
+      syncActiveRef.current = false;
+      isProcessingRef.current = false;
+      isRegionsSetupRef.current = false;
+      
+      console.log('✅ UltimateWaveSurfer cleanup complete');
+    };
+  }, [stopSync]);
 
   return (
     <div className={`ultimate-wavesurfer ${className}`}>
-      {/* 🎨 Custom scrollbar styling for both main waveform and minimap */}
       <style>{`
-        /* Main waveform scrollbar */
         .waveform-container ::-webkit-scrollbar {
           height: 10px;
           width: 10px;
@@ -860,7 +829,6 @@ const UltimateWaveSurfer = ({
           box-shadow: 0 0 15px rgba(8, 195, 242, 1);
         }
         
-        /* Minimap scrollbar - VERY BRIGHT blue glow */
         .minimap-container ::-webkit-scrollbar {
           height: 10px;
           width: 10px;
@@ -872,7 +840,6 @@ const UltimateWaveSurfer = ({
         .minimap-container ::-webkit-scrollbar-thumb {
           background: linear-gradient(45deg, #08c3f2, #4a9eff);
           border-radius: 4px;
-          /* MUCH stronger shadow - multiple layers for visibility */
           box-shadow: 
             0 0 10px rgba(8, 195, 242, 1),
             0 0 20px rgba(8, 195, 242, 0.8),
@@ -882,7 +849,6 @@ const UltimateWaveSurfer = ({
         }
         .minimap-container ::-webkit-scrollbar-thumb:hover {
           background: linear-gradient(45deg, #4a9eff, #08c3f2);
-          /* SUPER bright hover shadow */
           box-shadow: 
             0 0 15px rgba(8, 195, 242, 1),
             0 0 30px rgba(8, 195, 242, 1),
@@ -891,7 +857,6 @@ const UltimateWaveSurfer = ({
           border: 2px solid rgba(8, 195, 242, 1);
         }
         
-        /* Sync pulse animation */
         @keyframes syncPulse {
           0%, 100% {
             opacity: 1;
@@ -902,7 +867,6 @@ const UltimateWaveSurfer = ({
         }
       `}</style>
 
-      {/* 🎯 Main waveform container */}
       <div 
         ref={containerRef} 
         className="waveform-container"
@@ -916,7 +880,6 @@ const UltimateWaveSurfer = ({
         }}
       />
       
-      {/* 🗺️ Minimap container */}
       <div 
         ref={minimapRef} 
         className="minimap-container"
@@ -924,128 +887,11 @@ const UltimateWaveSurfer = ({
           width: '100%',
           marginTop: '10px',
           borderRadius: '4px',
-          overflow: 'auto', // Enable scrolling
+          overflow: 'auto',
           backgroundColor: '#2a2a2a',
           border: '1px solid #333'
         }}
       />
-
-      {/* 🎯 Ultimate Single Row Controls - All controls in one compact row */}
-      {isReady && (
-        <div className="region-controls" style={{
-          marginTop: '15px',
-          padding: '12px',
-          backgroundColor: '#333',
-          borderRadius: '6px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          flexWrap: 'wrap',
-          gap: '15px'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-            {/* Loop Regions Checkbox */}
-            <label style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              color: '#fff',
-              fontSize: '0.9rem',
-              cursor: 'pointer'
-            }}>
-              <input
-                type="checkbox"
-                checked={loopRegions}
-                onChange={(e) => {
-                  const newValue = e.target.checked;
-                  setLoopRegions(newValue);
-                  loopRegionsRef.current = newValue;
-                  setStatus(newValue ? '🔄 Region looping enabled' : '⏸️ Region looping disabled');
-                  console.log('🔄 Loop regions toggled to:', newValue);
-                }}
-                style={{
-                  accentColor: '#4a9eff',
-                  width: '16px',
-                  height: '16px'
-                }}
-              />
-              <span>🔄 Loop Regions</span>
-            </label>
-
-            {/* Region Info */}
-            <span style={{ 
-              color: '#4caf50', 
-              fontSize: '0.85rem',
-              fontWeight: '500'
-            }}>
-              📊 Regions: {regions?.getRegions()?.length || 0}
-            </span>
-          </div>
-
-          {/* Clear All Button */}
-          <button
-            onClick={() => {
-              try {
-                regions.clearRegions();
-                setActiveRegion(null);
-                setStatus('All regions cleared');
-              } catch (error) {
-                console.error('Error clearing regions:', error);
-              }
-            }}
-            style={{
-              backgroundColor: '#ff9800',
-              color: 'white',
-              border: 'none',
-              padding: '8px 16px',
-              borderRadius: '6px',
-              fontSize: '0.85rem',
-              fontWeight: '600',
-              cursor: 'pointer',
-              transition: 'all 0.2s ease',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px'
-            }}
-            onMouseEnter={(e) => {
-              e.target.style.backgroundColor = '#f57c00';
-              e.target.style.transform = 'translateY(-1px)';
-            }}
-            onMouseLeave={(e) => {
-              e.target.style.backgroundColor = '#ff9800';
-              e.target.style.transform = 'translateY(0)';
-            }}
-          >
-            <span>🗑️</span>
-            Clear All
-          </button>
-        </div>
-      )}
-      
-      {/* 📊 Minimal status - Only time and drag hint */}
-      {isReady && (
-        <div className="wavesurfer-status" style={{
-          marginTop: '10px',
-          padding: '8px 12px',
-          backgroundColor: '#2a2a2a',
-          borderRadius: '4px',
-          fontSize: '0.85rem',
-          color: '#ccc',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: '15px'
-        }}>
-          <span>
-            ⏱️ {formatTime(wsCurrentTime)} / {formatTime(wavesurfer?.getDuration() || 0)}
-          </span>
-          
-          <span style={{ color: '#888', fontSize: '0.75rem' }}>
-            🎨 Drag to create regions
-          </span>
-        </div>
-      )}
     </div>
   );
 };
