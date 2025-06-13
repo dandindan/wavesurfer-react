@@ -1,0 +1,365 @@
+/**
+ * File: src/assets/styles/retro-header.css
+ * Description: SAFE Retro Synthwave Header - NO CONFLICTS with existing styles
+ * 
+ * Version History:
+ * v3.0.0 (2025-06-13) - SAFE version - scoped to avoid conflicts
+ */
+
+/* Import Google Fonts for exact retro effect */
+@import url('https://fonts.googleapis.com/css2?family=Russo+One&family=Yellowtail&display=swap');
+
+/* Exact retro color variables from original - SCOPED */
+.retro-app-header {
+  --retro-navy: #0c0c4a;
+  --retro-dark-navy: #060726;
+  --retro-pink: rgba(213, 84, 213, 1);
+  --retro-pink2: rgba(213, 84, 213, 0.7);
+}
+
+/* 🎯 SCOPED - Only affects retro header elements */
+.retro-app-header * {
+  margin: 0;
+  padding: 0;
+}
+
+.retro-app-header *::before,
+.retro-app-header *::after {
+  content: '';
+  position: absolute;
+}
+
+/* 🎯 Main Retro Header Container - EXACT MATCH but SCOPED */
+.retro-app-header {
+  overflow: hidden;
+  width: 90%;
+  max-width: 1200px;
+  height: 280px;
+  background: var(--retro-navy);
+  display: grid;
+  position: relative;
+  border: 8px solid;
+  border-color: darkmagenta magenta;
+  outline: 8px ridge cyan;
+  outline-offset: 4px;
+  margin: 0 auto 40px;
+  filter: saturate(130%) contrast(125%);
+  /* ISOLATION - prevents affecting other elements */
+  isolation: isolate;
+  contain: layout style;
+}
+
+/* 🌌 Top Section with Sky - SCOPED */
+.retro-app-header .retro-top {
+  height: 67%;
+  background: linear-gradient(transparent 50%, hotpink 160%);
+  box-shadow: 0 15px 50px 1px white;
+  position: relative;
+}
+
+.retro-app-header .retro-sky {
+  position: absolute;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  background: repeating-linear-gradient(
+      pink 2px,
+      transparent 3px,
+      transparent 30px
+    ),
+    repeating-linear-gradient(
+        90deg,
+        pink 2px,
+        transparent 3px,
+        transparent 40px
+      )
+      10px 0;
+  filter: drop-shadow(0 0 1px magenta) drop-shadow(0 0 3px magenta)
+    drop-shadow(0 0 7px cyan);
+  animation: retro-move 10s linear infinite;
+  opacity: 0.2;
+}
+
+/* 🌍 Bottom Section with Ground - SCOPED */
+.retro-app-header .retro-bottom {
+  position: absolute;
+  z-index: 2;
+  width: 100%;
+  height: 100%;
+  transform: perspective(500px) rotateX(65deg);
+  bottom: -15%;
+  background: linear-gradient(
+    90deg,
+    hotpink -60%,
+    transparent 40%,
+    transparent 60%,
+    hotpink 140%
+  );
+  clip-path: polygon(0 100%, 0 55%, 100% 55%, 100% 100%);
+}
+
+.retro-app-header .retro-ground {
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  height: 55%;
+  background: repeating-linear-gradient(
+      white 2px,
+      transparent 3px,
+      transparent 30px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      white 2px,
+      transparent 3px,
+      transparent 40px
+    );
+  filter: drop-shadow(0 0 1px cyan) drop-shadow(0 0 3px cyan)
+    drop-shadow(0 0 7px cyan);
+  animation: retro-move 10s linear infinite;
+}
+
+/* 🎨 Text Container - EXACT positioning but SCOPED */
+.retro-app-header .retro-text-container {
+  position: absolute;
+  z-index: 10;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  place-items: center;
+  justify-content: center;
+}
+
+/* 🎯 Main Title - EXACT styling from original but SCOPED */
+.retro-app-header .retro-main-title {
+  color: transparent;
+  font-family: 'Russo One', sans-serif;
+  text-transform: uppercase;
+  font-size: 5em;
+  transform: translatey(25px);
+  background: linear-gradient(
+    cornflowerblue 30%,
+    white,
+    darkmagenta 60%,
+    cornflowerblue 100%
+  );
+  background-size: contain;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-stroke: 1px silver;
+  filter: drop-shadow(5px 5px 1px black) drop-shadow(1px 1px 1px magenta);
+  animation: retro-bg-shift 0.5s ease-in-out infinite alternate;
+  margin: 0;
+  user-select: none;
+  cursor: pointer;
+  /* PREVENT inheritance conflicts */
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: normal;
+}
+
+/* 🎵 Subtitle - EXACT styling from original but SCOPED */
+.retro-app-header .retro-sub-title {
+  color: white;
+  font-family: 'Yellowtail', cursive;
+  font-weight: 100;
+  font-size: 4em;
+  transform: translatey(-10px) rotatez(-5deg);
+  text-shadow: 0 0 3px magenta, 0 0 7px magenta, 0 0 15px black, 0 0 15px black;
+  animation: retro-hover 1s ease-in-out infinite;
+  margin: 0;
+  user-select: none;
+  /* PREVENT inheritance conflicts */
+  line-height: 1;
+  letter-spacing: normal;
+}
+
+/* 📊 Stats Bar - positioned like original but SCOPED */
+.retro-app-header .retro-stats-bar {
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  z-index: 15;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 0.7rem;
+  color: cyan;
+  text-shadow: 0 0 5px currentColor;
+  font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+.retro-app-header .retro-stat-item {
+  background: rgba(0, 0, 0, 0.7);
+  padding: 2px 6px;
+  border-radius: 3px;
+  border: 1px solid rgba(0, 255, 255, 0.3);
+  backdrop-filter: blur(5px);
+  font-weight: 500;
+  white-space: nowrap;
+  font-family: inherit;
+  line-height: 1.2;
+}
+
+/* 🎯 SCOPED Animations - using prefixed names to avoid conflicts */
+@keyframes retro-move {
+  to {
+    background-position-y: 2000px;
+  }
+}
+
+@keyframes retro-bg-shift {
+  0% {
+    background-position: 0 -25px;
+  }
+  100% {
+    background-position: 0 25px;
+  }
+}
+
+@keyframes retro-hover {
+  0% {
+    transform: translatey(-10px) rotatez(-5deg) perspective(200px) translatez(0);
+  }
+  50% {
+    transform: translatey(-10px) rotatez(-5deg) perspective(200px)
+      translatez(50px);
+  }
+  100% {
+    transform: translatey(-10px) rotatez(-5deg) perspective(200px) translatez(0);
+  }
+}
+
+/* 📱 Responsive Design - SCOPED to header only */
+@media (max-width: 1024px) {
+  .retro-app-header {
+    width: 95%;
+    height: 220px;
+  }
+
+  .retro-app-header .retro-main-title {
+    font-size: 4em;
+  }
+
+  .retro-app-header .retro-sub-title {
+    font-size: 3.2em;
+  }
+}
+
+@media (max-width: 768px) {
+  .retro-app-header {
+    height: 180px;
+    border-width: 6px;
+    outline-width: 6px;
+  }
+
+  .retro-app-header .retro-main-title {
+    font-size: 3em;
+    transform: translatey(15px);
+  }
+
+  .retro-app-header .retro-sub-title {
+    font-size: 2.5em;
+  }
+
+  .retro-app-header .retro-stats-bar {
+    bottom: 5px;
+    right: 5px;
+    font-size: 0.6rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .retro-app-header {
+    height: 140px;
+    margin-bottom: 20px;
+  }
+
+  .retro-app-header .retro-main-title {
+    font-size: 2.2em;
+    transform: translatey(10px);
+  }
+
+  .retro-app-header .retro-sub-title {
+    font-size: 1.8em;
+  }
+
+  .retro-app-header .retro-stats-bar {
+    display: none; /* Hide on very small screens to maintain original look */
+  }
+}
+
+/* 🎨 Enhanced hover effect for title - SCOPED */
+.retro-app-header .retro-main-title:hover {
+  animation-duration: 0.2s;
+}
+
+.retro-app-header .retro-main-title:active {
+  transform: translatey(27px) scale(0.98);
+  filter: drop-shadow(3px 3px 1px black) drop-shadow(1px 1px 1px magenta);
+}
+
+/* ♿ Accessibility - SCOPED */
+@media (prefers-reduced-motion: reduce) {
+  .retro-app-header .retro-sky,
+  .retro-app-header .retro-ground {
+    animation-duration: 30s; /* Slow down instead of stopping completely */
+  }
+
+  .retro-app-header .retro-main-title {
+    animation-duration: 2s; /* Slow down the shimmer */
+  }
+
+  .retro-app-header .retro-sub-title {
+    animation-duration: 3s; /* Slow down the hover */
+  }
+}
+
+/* 🎯 Performance optimizations - SCOPED */
+.retro-app-header,
+.retro-app-header .retro-sky,
+.retro-app-header .retro-ground,
+.retro-app-header .retro-main-title,
+.retro-app-header .retro-sub-title {
+  will-change: transform;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+/* 🖨️ Print styles - SCOPED */
+@media print {
+  .retro-app-header {
+    background: white !important;
+    color: black !important;
+    border: 2px solid black !important;
+    outline: none !important;
+    filter: none !important;
+    box-shadow: none !important;
+  }
+
+  .retro-app-header .retro-main-title {
+    color: black !important;
+    -webkit-text-stroke: 1px black !important;
+    background: none !important;
+    filter: none !important;
+    animation: none !important;
+    transform: translatey(25px) !important;
+  }
+
+  .retro-app-header .retro-sub-title {
+    color: black !important;
+    text-shadow: none !important;
+    animation: none !important;
+    transform: translatey(-10px) rotatez(-5deg) !important;
+  }
+
+  .retro-app-header .retro-top,
+  .retro-app-header .retro-bottom,
+  .retro-app-header .retro-sky,
+  .retro-app-header .retro-ground,
+  .retro-app-header .retro-stats-bar {
+    display: none !important;
+  }
+}

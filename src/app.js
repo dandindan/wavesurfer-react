@@ -1,12 +1,14 @@
-// src/App.js - Updated with Enhanced Region Controls Only
+// src/App.js - Updated with EXACT Retro Synthwave Header Match
 import React, { useCallback, useEffect } from 'react';
 import { useAudioSyncStore } from './store/audioSyncStore';
 import UltimateWaveSurfer from './components/UltimateWaveSurfer';
 import UltimateMPVController from './components/UltimateMPVController';
 import StatusBar from './components/StatusBar';
 import UploadPanel from './components/UploadPanel';
+import './assets/styles/retro-header.css'; // 🎯 Import EXACT retro header styles
 import './assets/styles/main.css';
 import './assets/styles/integrated-controls.css';
+
 
 function UltimateApp() {
   const {
@@ -226,35 +228,59 @@ function UltimateApp() {
       return () => clearInterval(interval);
     }
   }, [getPerformanceStats]);
-
+// 🎯 ADD THE SLIDER PROGRESS CODE RIGHT HERE:
+  useEffect(() => {
+    const updateSliderProgress = () => {
+      // Update zoom slider
+      const zoomSlider = document.querySelector('.zoom-controls input[type="range"]');
+      if (zoomSlider) {
+        const zoomPercent = ((zoomLevel - 10) / (1000 - 10)) * 100;
+        zoomSlider.style.setProperty('--progress', `${zoomPercent}%`);
+      }
+      
+      // Update speed slider  
+      const speedSlider = document.querySelector('.speed-controls input[type="range"]');
+      if (speedSlider) {
+        const speedPercent = ((playbackRate - 0.25) / (3 - 0.25)) * 100;
+        speedSlider.style.setProperty('--progress', `${speedPercent}%`);
+      }
+    };
+    
+    updateSliderProgress();
+  }, [zoomLevel, playbackRate]);
   return (
     <div className="ultimate-app">
-      {/* 🎯 Ultimate Header */}
-      <header className="app-header">
-        <h1>Ultimate WaveSurfer-MPV Sync</h1>
-        <div className="app-stats">
-          {duration > 0 && (
-            <>
-              <span>⏱️ Duration: {formatTime(duration)}</span>
-              <span>•</span>
-            </>
-          )}
-          <span>⚡ Rate: {playbackRate.toFixed(1)}x</span>
-          <span>•</span>
-          <span>🔍 Zoom: {zoomLevel}px/s</span>
+      {/* 🎯 EXACT RETRO SYNTHWAVE HEADER - Matching Original Reference */}
+      <div className="retro-app-header">
+        <div className="retro-top">
+          <div className="retro-sky"></div>
+        </div>
+        <div className="retro-bottom">
+          <div className="retro-ground"></div>
+        </div>
+        <div className="retro-text-container">
+          <h1 className="retro-main-title">ULTIMATE WAVESURFER</h1>
+          <h2 className="retro-sub-title">Media Player Synchronization</h2>
+        </div>
+        
+        {/* Stats positioned like the "a" link in original */}
+        <div className="retro-stats-bar">
+          <div className="retro-stat-item">
+            ⚡ {duration > 0 ? formatTime(duration) : 'Ready'}
+          </div>
+          <div className="retro-stat-item">
+            🎯 {playbackRate.toFixed(1)}x
+          </div>
+          <div className="retro-stat-item">
+            🔍 {zoomLevel}px/s
+          </div>
           {mpvConnected && (
-            <>
-              <span>•</span>
-              <span className={`sync-status ${syncAccuracy < 0.05 ? 'perfect' : 'drift'}`}>
-                {syncAccuracy < 0.05 ? 
-                  '✅ Perfect Sync' : 
-                  `⚠️ ${(syncAccuracy * 1000).toFixed(0)}ms drift`
-                }
-              </span>
-            </>
+            <div className="retro-stat-item">
+              {syncAccuracy < 0.05 ? '✅ SYNC' : `⚠️ ${(syncAccuracy * 1000).toFixed(0)}ms`}
+            </div>
           )}
         </div>
-      </header>
+      </div>
 
       {/* 📊 Status bar */}
       <StatusBar 
@@ -345,126 +371,139 @@ function UltimateApp() {
           </div>
         </div>
 
-        {/* 📊 ENHANCED Region controls - ALL FUNCTIONALITY IN ONE PLACE */}
-        <div className="control-section region-controls">
-          <h3>📊 Regions</h3>
-          
-          {/* Row 1: Loop toggle and region count */}
-          <div className="region-info-row" style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: '12px',
-            padding: '8px 12px',
-            backgroundColor: 'rgba(255, 255, 255, 0.05)',
-            borderRadius: '6px',
-            fontSize: '0.85rem'
-          }}>
-            {/* Loop Regions Toggle */}
-            <label style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              cursor: 'pointer',
-              color: '#fff',
-              fontSize: '0.85rem'
-            }}>
-              <input
-                type="checkbox"
-                checked={window.ultimateWaveSurfer?.ultimate?.getLoopRegions() || false}
-                onChange={(e) => {
-                  const newValue = e.target.checked;
-                  if (window.ultimateWaveSurfer?.ultimate?.setLoopRegions) {
-                    window.ultimateWaveSurfer.ultimate.setLoopRegions(newValue);
-                  }
-                }}
-                style={{
-                  accentColor: '#4a9eff',
-                  width: '14px',
-                  height: '14px'
-                }}
-              />
-              <span>🔄 Loop</span>
-            </label>
+        {/* 📊 FIXED Region controls - Consistent height */}
+<div className="control-section region-controls">
+  <h3 style={{
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    margin: '0 0 15px 0'
+  }}>
+    <span>📊 Regions</span>
+    {/* ACTIVE REGION INFO IN HEADER */}
+    {activeRegion && (
+      <span style={{
+        fontSize: '0.9rem',
+        color: '#4a9eff',
+        fontWeight: '500',
+        backgroundColor: 'rgba(74, 158, 255, 0.1)',
+        padding: '2px 8px',
+        borderRadius: '12px',
+        border: '1px solid rgba(74, 158, 255, 0.3)'
+      }}>
+        📊 {activeRegion.start.toFixed(2)}s-{activeRegion.end.toFixed(2)}s ({(activeRegion.end - activeRegion.start).toFixed(2)}s)
+      </span>
+    )}
+  </h3>
+  
+  {/* Row 1: Loop toggle and region count */}
+  <div className="region-info-row" style={{
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: '12px',
+    padding: '8px 12px',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: '6px',
+    fontSize: '0.9rem'
+  }}>
+    {/* Loop Regions Toggle */}
+    <label style={{
+      display: 'flex',
+      alignItems: 'center',
+      gap: '8px',
+      cursor: 'pointer',
+      color: '#fff',
+      fontSize: '0.9rem'
+    }}>
+      <input
+        type="checkbox"
+        checked={window.ultimateWaveSurfer?.ultimate?.getLoopRegions() || false}
+        onChange={(e) => {
+          const newValue = e.target.checked;
+          if (window.ultimateWaveSurfer?.ultimate?.setLoopRegions) {
+            window.ultimateWaveSurfer.ultimate.setLoopRegions(newValue);
+          }
+        }}
+        style={{
+          accentColor: '#4a9eff',
+          width: '14px',
+          height: '14px'
+        }}
+      />
+      <span>🔄 Loop</span>
+    </label>
 
-            {/* Region Count */}
-            <span style={{ 
-              color: '#4caf50', 
-              fontWeight: '500',
-              fontSize: '0.85rem'
-            }}>
-              📊 Count: {window.ultimateWaveSurfer?.ultimate?.getRegions()?.length || 0}
-            </span>
-          </div>
+    {/* Region Count */}
+    <span style={{ 
+      color: '#4caf50', 
+      fontWeight: '500',
+      fontSize: '0.9rem'
+    }}>
+      📊 Count: {window.ultimateWaveSurfer?.ultimate?.getRegions()?.length || 0}
+    </span>
+  </div>
 
-          {/* Row 2: Current time and drag hint */}
-          <div className="region-status-row" style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: '12px',
-            padding: '6px 12px',
-            backgroundColor: 'rgba(74, 158, 255, 0.1)',
-            borderRadius: '6px',
-            fontSize: '0.8rem'
-          }}>
-            {/* Current Time Display */}
-            <span style={{ 
-              color: '#4a9eff', 
-              fontWeight: '600',
-              fontSize: '0.85rem'
-            }}>
-              ⏱️ {formatTime(currentTime)} / {formatTime(duration)}
-            </span>
+  {/* Row 2: Current time and drag hint */}
+  <div className="region-status-row" style={{
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: '12px',
+    padding: '6px 12px',
+    backgroundColor: 'rgba(74, 158, 255, 0.1)',
+    borderRadius: '6px',
+    fontSize: '0.8rem'
+  }}>
+    {/* Current Time Display */}
+    <span style={{ 
+      color: '#4a9eff', 
+      fontWeight: '600',
+      fontSize: '0.85rem'
+    }}>
+      ⏱️ {formatTime(currentTime)} / {formatTime(duration)}
+    </span>
 
-            {/* Drag Hint */}
-            <span style={{ 
-              color: '#888', 
-              fontSize: '0.75rem',
-              fontStyle: 'italic'
-            }}>
-              🎨 Drag to create
-            </span>
-          </div>
+    {/* Drag Hint */}
+    <span style={{ 
+      color: '#888', 
+      fontSize: '0.9rem',
+      fontStyle: 'italic'
+    }}>
+      🎨 Drag to create
+    </span>
+  </div>
 
-          {/* Row 3: Action buttons */}
-          <div className="controls-grid">
-            <button 
-              onClick={() => window.ultimateWaveSurfer?.ultimate?.clearAllRegions()}
-              disabled={!audioUrl}
-              className="clear-regions"
-              title="Clear all regions"
-            >
-              <i className="fas fa-trash"></i>
-              Clear All
-            </button>
-            
-            {activeRegion && (
-              <button
-                onClick={() => setActiveRegion(null)}
-                className="deactivate-region"
-                title="Escape key"
-              >
-                <i className="fas fa-times"></i>
-                Deactivate
-              </button>
-            )}
-          </div>
-          
-          {/* Active Region Details */}
-          {activeRegion && (
-            <div className="active-region-info">
-              <div className="region-details">
-                <div className="region-time">
-                  📊 {activeRegion.start.toFixed(3)}s - {activeRegion.end.toFixed(3)}s
-                </div>
-                <div className="region-duration">
-                  Duration: {(activeRegion.end - activeRegion.start).toFixed(3)}s
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
+  {/* Row 3: Action buttons - FIXED HEIGHT CONTAINER */}
+  <div style={{
+    minHeight: '45px', // Fixed height to prevent layout shift
+    display: 'flex',
+    alignItems: 'center'
+  }}>
+    <div className="controls-grid" style={{ width: '100%' }}>
+      <button 
+        onClick={() => window.ultimateWaveSurfer?.ultimate?.clearAllRegions()}
+        disabled={!audioUrl}
+        className="clear-regions"
+        title="Clear all regions"
+      >
+        <i className="fas fa-trash"></i>
+        Clear All
+      </button>
+      
+      {activeRegion && (
+        <button
+          onClick={() => setActiveRegion(null)}
+          className="deactivate-region"
+          title="Escape key"
+        >
+          <i className="fas fa-times"></i>
+          Deactivate
+        </button>
+      )}
+    </div>
+  </div>
+</div>
 
         {/* 🎬 MPV controls */}
         <div className="control-section mpv-section">
