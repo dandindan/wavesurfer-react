@@ -259,8 +259,8 @@ function UltimateApp() {
           <div className="retro-ground"></div>
         </div>
         <div className="retro-text-container">
-          <h1 className="retro-main-title">ULTIMATE WAVESURFER</h1>
-          <h2 className="retro-sub-title">Media Player Synchronization</h2>
+          <h1 className="retro-main-title">אורגן אורות שנות ה-80</h1>
+          <h2 className="retro-sub-title">Spectrogram Media Player</h2>
         </div>
         
         {/* Stats positioned like the "a" link in original */}

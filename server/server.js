@@ -8,8 +8,8 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 
 // 🚀 Professional middleware configuration
-app.use(express.json({ limit: '100mb' }));
-app.use(express.urlencoded({ extended: true, limit: '100mb' }));
+app.use(express.json({ limit: '1gb' }));
+app.use(express.urlencoded({ extended: true, limit: '1gb' }));
 
 // 🌐 Ultimate CORS configuration
 app.use(cors({

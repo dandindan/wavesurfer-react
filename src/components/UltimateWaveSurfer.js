@@ -89,11 +89,11 @@ const UltimateWaveSurfer = ({
     }),
     SpectrogramPlugin.create({
       labels: true,
-      height: 200,
+      height: 400,
       splitChannels: false,
       colorMap: 'roseus',
       scale: 'linear',
-      frequencyMax: 8000
+      frequencyMax: 2500
     }),
     HoverPlugin.create({
       lineColor: '#ff5722',
