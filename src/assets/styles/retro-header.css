@@ -137,7 +137,7 @@
   color: transparent;
   font-family: 'Russo One', sans-serif;
   text-transform: uppercase;
-  font-size: 5em;
+  font-size: 7em;
   transform: translatey(25px);
   background: linear-gradient(
     cornflowerblue 30%,
@@ -165,7 +165,7 @@
   color: white;
   font-family: 'Yellowtail', cursive;
   font-weight: 100;
-  font-size: 4em;
+  font-size: 3em;
   transform: translatey(-10px) rotatez(-5deg);
   text-shadow: 0 0 3px magenta, 0 0 7px magenta, 0 0 15px black, 0 0 15px black;
   animation: retro-hover 1s ease-in-out infinite;

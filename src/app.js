@@ -259,7 +259,7 @@ function UltimateApp() {
           <div className="retro-ground"></div>
         </div>
         <div className="retro-text-container">
-          <h1 className="retro-main-title">אורגן אורות שנות ה-80</h1>
+          <h1 className="retro-main-title">MKMRS</h1>
           <h2 className="retro-sub-title">Spectrogram Media Player</h2>
         </div>
         
